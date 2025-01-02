@@ -1,12 +1,26 @@
-// config/database.js
-const { Sequelize } = require('sequelize');
-require('dotenv').config(); // Để sử dụng biến môi trường từ file .env
+const Sequelize = require('sequelize');
+require('dotenv').config();
 
-const sequelize = new Sequelize(process.env.DB_NAME, process.env.DB_USER, process.env.DB_PASSWORD, {
-    host: process.env.DB_HOST,
-    dialect: 'mysql',
-    port: process.env.DB_PORT || 3306, // Sử dụng cổng mặc định hoặc cổng bạn đã cấu hình
-});
+const sequelize = new Sequelize(
+    process.env.DB_NAME,        // Database name
+    process.env.DB_USER,        // User
+    process.env.DB_PASSWORD,    // Password
+    {
+        host: '127.0.0.1',        // Force use of 127.0.0.1
+        port: 3306,               // Default MySQL port (XAMPP)
+        dialect: 'mysql',         // Use MySQL dialect
+        logging: false            // Disable SQL logging (optional)
+    }
+);
+
+// Test Database Connection
+sequelize.authenticate()
+    .then(() => {
+        console.log('Database connected...');
+    })
+    .catch((err) => {
+        console.error('Error: ', err);
+    });
 
 module.exports = sequelize;
 
