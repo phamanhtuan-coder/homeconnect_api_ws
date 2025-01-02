@@ -12,8 +12,7 @@ exports.authenticate = (req, res, next) => {
     }
 
     try {
-        const verified = jwt.verify(token, process.env.JWT_SECRET);
-        req.user = verified;
+        req.user = jwt.verify(token, process.env.JWT_SECRET);
         next();
     } catch (error) {
         res.status(403).json({ error: 'Invalid token' });
@@ -21,7 +20,7 @@ exports.authenticate = (req, res, next) => {
 };
 
 
-// Middleware to check if user has admin privileges
+// Middleware to check if user has admin privileges (tam thời chưa cần)
 exports.isAdmin = (req, res, next) => {
     if (!req.user || req.user.role !== 'admin') {
         return res.status(403).json({ error: 'Forbidden: Admin access required' });

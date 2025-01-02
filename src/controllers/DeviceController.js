@@ -36,7 +36,9 @@ exports.updateDeviceById = async (req, res) => {
     try {
         const device = await devices.findByPk(req.params.id);
         if (!device) return res.status(404).json({ error: 'Device not found' });
-
+        if (device.UserID !== req.user.id) {
+            return res.status(403).json({ error: 'Unauthorized to modify this device' });
+        }
         await device.update(req.body);
         res.status(200).json(device);
     } catch (error) {
@@ -49,7 +51,9 @@ exports.deleteDeviceById = async (req, res) => {
     try {
         const device = await devices.findByPk(req.params.id);
         if (!device) return res.status(404).json({ error: 'Device not found' });
-
+        if (device.UserID !== req.user.id) {
+            return res.status(403).json({ error: 'Unauthorized to modify this device' });
+        }
         await device.destroy();
         res.status(200).json({ message: 'Device deleted successfully' });
     } catch (error) {

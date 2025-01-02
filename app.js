@@ -6,7 +6,7 @@ const logger = require('morgan');
 
 // Import routers
 const UserRouter = require('./src/routes/UserRouter');
-// const DeviceRouter = require('./routes/DeviceRouter');
+const DeviceRouter = require('./src/routes/DeviceRouter');
 // const AlertRouter = require('./routes/AlertRouter');
 // const LogRouter = require('./routes/LogRouter');
 // const AuthRouter = require('./routes/AuthRouter');
@@ -20,10 +20,11 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+const { authenticate } = require('./src/middlewares/authMiddleware');
 
 // API routes
 app.use('/api/users', UserRouter);
-// app.use('/api/devices', DeviceRouter);
+app.use('/api/devices', DeviceRouter);
 // app.use('/api/alerts', AlertRouter);
 // app.use('/api/logs', LogRouter);
 // app.use('/api/auth', AuthRouter);
