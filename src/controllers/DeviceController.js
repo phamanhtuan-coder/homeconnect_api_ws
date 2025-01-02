@@ -24,13 +24,23 @@ exports.getAllDevices = async (req, res) => {
 // Lấy thiết bị theo ID
 exports.getDeviceById = async (req, res) => {
     try {
-        const device = await devices.findByPk(req.params.id);
-        if (!device) return res.status(404).json({ error: 'Device not found' });
+        const device = await devices.findByPk(req.params.id, {
+            include: {
+                model: devicetypes,
+                as: 'DeviceType'  // Chú ý alias phải trùng với alias trong model
+            }
+        });
+
+        if (!device) {
+            return res.status(404).json({ error: 'Device not found' });
+        }
+
         res.status(200).json(device);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 // Cập nhật thiết bị
 exports.updateDeviceById = async (req, res) => {
@@ -128,7 +138,7 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(404).json({ error: 'Device not found' });
         }
 
-        const supportedAttributes = device.DeviceType.Attributes;
+        const supportedAttributes = device.devicetypes.Attributes;
 
         // Kiểm tra thiết bị có hỗ trợ brightness và color không
         if (supportedAttributes.brightness) {
