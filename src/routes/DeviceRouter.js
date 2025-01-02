@@ -4,25 +4,24 @@ const {
     getAllDevices,
     getDeviceById,
     updateDeviceById,
-    deleteDeviceById
+    deleteDeviceById,
+    toggleDevice,
+    getFilteredDevices,
+    updateDeviceAttributes
 } = require('../controllers/DeviceController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// Create a new device
 router.post('/', authenticate, createDevice);
-
-// Get all devices
 router.get('/', authenticate, getAllDevices);
-
-// Get device by ID
 router.get('/:id', authenticate, getDeviceById);
-
-// Update device by ID
 router.put('/:id', authenticate, updateDeviceById);
-
-// Delete device by ID
 router.delete('/:id', authenticate, deleteDeviceById);
+router.put('/:id/toggle', authenticate, toggleDevice);
+// Lấy danh sách thiết bị (Tìm kiếm bằng query)
+router.get('/filter', authenticate, getFilteredDevices);
+// Điều chỉnh độ sáng và màu sắc (mới thêm)
+router.put('/:id/attributes', authenticate, updateDeviceAttributes);
 
 module.exports = router;
