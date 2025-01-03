@@ -1,5 +1,6 @@
 const { users, devices, alerts, logs, houses, statistics } = require('../models');
-
+const { Op } = require('sequelize');
+const moment = require('moment');
 /**
  * Tổng hợp dữ liệu dashboard (Get Dashboard Overview)
  */
@@ -82,6 +83,134 @@ exports.getPendingAlerts = async (req, res) => {
         });
 
         res.status(200).json(pendingAlerts);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+
+/**
+ * Tính trung bình nhiệt độ, độ ẩm và năng lượng theo từng phòng
+ */
+exports.getRoomAverages = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = moment().startOf('day');
+        const startDate = moment().subtract(6, 'days').startOf('day');
+
+        // Lấy tất cả logs của thiết bị trong 7 ngày gần nhất
+        const deviceLogs = await logs.findAll({
+            where: {
+                UserID: userId,
+                Timestamp: {
+                    [Op.between]: [startDate.toDate(), today.toDate()]
+                }
+            },
+            include: {
+                model: devices,
+                as: 'Device',
+                where: { TypeID: { [Op.notIn]: [1] } }, // Loại thiết bị không cảm biến (như bóng đèn)
+            },
+            order: [['Timestamp', 'ASC']]
+        });
+
+        const roomData = {};
+
+        // Phân loại logs theo phòng (spaces)
+        deviceLogs.forEach((log) => {
+            const spaceId = log.SpaceID;
+            const { energy, temperature, humidity } = log.Action;
+
+            if (!roomData[spaceId]) {
+                roomData[spaceId] = {
+                    energy: 0,
+                    temperature: 0,
+                    humidity: 0,
+                    count: 0
+                };
+            }
+
+            roomData[spaceId].energy += energy || 0;
+            roomData[spaceId].temperature += temperature || 0;
+            roomData[spaceId].humidity += humidity || 0;
+            roomData[spaceId].count += 1;
+        });
+
+        // Tính trung bình cho từng phòng
+        Object.keys(roomData).forEach((spaceId) => {
+            const room = roomData[spaceId];
+            room.temperature = room.count ? (room.temperature / room.count) : null;
+            room.humidity = room.count ? (room.humidity / room.count) : null;
+        });
+
+        res.status(200).json({
+            message: 'Room average statistics fetched successfully',
+            roomStatistics: roomData
+        });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Tính trung bình nhiệt độ, độ ẩm và điện năng cho toàn bộ nhà
+ */
+exports.getHouseAverages = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const today = moment().startOf('day');
+        const startDate = moment().subtract(6, 'days').startOf('day');
+
+        // Lấy logs của tất cả thiết bị thuộc user
+        const deviceLogs = await logs.findAll({
+            where: {
+                UserID: userId,
+                Timestamp: {
+                    [Op.between]: [startDate.toDate(), today.toDate()]
+                }
+            },
+            include: {
+                model: devices,
+                as: 'Device',
+                where: { TypeID: { [Op.notIn]: [1] } },  // Loại thiết bị không cảm biến
+            },
+            order: [['Timestamp', 'ASC']]
+        });
+
+        const houseData = {};
+
+        // Phân loại logs theo nhà (houses)
+        deviceLogs.forEach((log) => {
+            const houseId = log.Device.HouseID;  // Giả định thiết bị có liên kết với nhà
+            const { energy, temperature, humidity } = log.Action;
+
+            if (!houseData[houseId]) {
+                houseData[houseId] = {
+                    energy: 0,
+                    temperature: 0,
+                    humidity: 0,
+                    count: 0
+                };
+            }
+
+            houseData[houseId].energy += energy || 0;
+            houseData[houseId].temperature += temperature || 0;
+            houseData[houseId].humidity += humidity || 0;
+            houseData[houseId].count += 1;
+        });
+
+        // Tính trung bình cho từng nhà
+        Object.keys(houseData).forEach((houseId) => {
+            const house = houseData[houseId];
+            house.temperature = house.count ? (house.temperature / house.count) : null;
+            house.humidity = house.count ? (house.humidity / house.count) : null;
+        });
+
+        res.status(200).json({
+            message: 'House average statistics fetched successfully',
+            houseStatistics: houseData
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
