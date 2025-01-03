@@ -5,7 +5,9 @@ const {
     updateUserById,
     deleteUserById,
     getUserSharedDevices,
-    getSharedWithDevices
+    getSharedWithDevices,
+    resetPassword,
+    changePassword
 } = require('../controllers/UserController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
@@ -28,5 +30,12 @@ router.get('/:id/shared', authenticate, getUserSharedDevices);
 
 // Lấy thiết bị được chia sẻ với người dùng
 router.get('/:id/shared-with', authenticate, getSharedWithDevices);
+
+
+// Khôi phục mật khẩu
+router.post('/reset-password', resetPassword);
+
+// Đổi mật khẩu
+router.put('/change-password', authenticate, changePassword);
 
 module.exports = router;
