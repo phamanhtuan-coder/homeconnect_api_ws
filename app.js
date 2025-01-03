@@ -8,7 +8,7 @@ const logger = require('morgan');
 const UserRouter = require('./src/routes/UserRouter');
 const DeviceRouter = require('./src/routes/DeviceRouter');
 // const AlertRouter = require('./routes/AlertRouter');
-// const LogRouter = require('./routes/LogRouter');
+const LogRouter = require('./src/routes/LogRouter');
 // const AuthRouter = require('./routes/AuthRouter');
 // const DashboardRouter = require('./routes/DashboardRouter');
 
@@ -26,7 +26,7 @@ const { authenticate } = require('./src/middlewares/authMiddleware');
 app.use('/api/users', UserRouter);
 app.use('/api/devices', DeviceRouter);
 // app.use('/api/alerts', AlertRouter);
-// app.use('/api/logs', LogRouter);
+app.use('/api/logs', LogRouter);
 // app.use('/api/auth', AuthRouter);
 // app.use('/api/dashboard', DashboardRouter);
 

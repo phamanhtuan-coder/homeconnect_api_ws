@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
 module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('logs', {
+  const Log = sequelize.define('logs', {
     LogID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -54,30 +54,50 @@ module.exports = function(sequelize, DataTypes) {
         unique: true,
         using: "BTREE",
         fields: [
-          { name: "LogID" },
+          { name: "LogID" }
         ]
       },
       {
         name: "DeviceID",
         using: "BTREE",
         fields: [
-          { name: "DeviceID" },
+          { name: "DeviceID" }
         ]
       },
       {
         name: "UserID",
         using: "BTREE",
         fields: [
-          { name: "UserID" },
+          { name: "UserID" }
         ]
       },
       {
         name: "SpaceID",
         using: "BTREE",
         fields: [
-          { name: "SpaceID" },
+          { name: "SpaceID" }
         ]
-      },
+      }
     ]
   });
+
+  // Định nghĩa các mối quan hệ
+  Log.associate = function(models) {
+    Log.belongsTo(models.devices, {
+      foreignKey: 'DeviceID',
+      as: 'Device'
+    });
+
+    Log.belongsTo(models.users, {
+      foreignKey: 'UserID',
+      as: 'User'
+    });
+
+    Log.belongsTo(models.spaces, {
+      foreignKey: 'SpaceID',
+      as: 'Space'
+    });
+  };
+
+  return Log;
 };
