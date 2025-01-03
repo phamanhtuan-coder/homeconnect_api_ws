@@ -7,10 +7,10 @@ const logger = require('morgan');
 // Import routers
 const UserRouter = require('./src/routes/UserRouter');
 const DeviceRouter = require('./src/routes/DeviceRouter');
-// const AlertRouter = require('./routes/AlertRouter');
+const AlertRouter = require('./src/routes/AlertRouter');
 const LogRouter = require('./src/routes/LogRouter');
-// const AuthRouter = require('./routes/AuthRouter');
-// const DashboardRouter = require('./routes/DashboardRouter');
+// const AuthRouter = require('./src/routes/AuthRouter');
+// const DashboardRouter = require('./src/routes/DashboardRouter');
 
 const app = express();
 
@@ -25,7 +25,7 @@ const { authenticate } = require('./src/middlewares/authMiddleware');
 // API routes
 app.use('/api/users', UserRouter);
 app.use('/api/devices', DeviceRouter);
-// app.use('/api/alerts', AlertRouter);
+app.use('/api/alerts', AlertRouter);
 app.use('/api/logs', LogRouter);
 // app.use('/api/auth', AuthRouter);
 // app.use('/api/dashboard', DashboardRouter);
