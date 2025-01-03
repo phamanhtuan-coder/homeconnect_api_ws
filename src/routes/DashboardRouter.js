@@ -25,7 +25,7 @@ router.get('/pending-alerts', authenticate, getPendingAlerts);
 // router.get('/weekly-statistics', authenticate, getDeviceStatisticsForWeek);
 
 // Thống kê thiết bị trong 1 ngày
-router.get('/daily-statistics', authenticate, getDeviceStatisticsForDay);
+//router.get('/daily-statistics', authenticate, getDeviceStatisticsForDay);
 
 // Trung bình nhiệt độ, độ ẩm và năng lượng của các phòng
 router.get('/room-averages', authenticate, getRoomAverages);
