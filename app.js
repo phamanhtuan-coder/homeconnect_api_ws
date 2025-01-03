@@ -9,7 +9,7 @@ const UserRouter = require('./src/routes/UserRouter');
 const DeviceRouter = require('./src/routes/DeviceRouter');
 const AlertRouter = require('./src/routes/AlertRouter');
 const LogRouter = require('./src/routes/LogRouter');
-// const AuthRouter = require('./src/routes/AuthRouter');
+const AuthRouter = require('./src/routes/AuthRouter');
 // const DashboardRouter = require('./src/routes/DashboardRouter');
 
 const app = express();
@@ -27,7 +27,7 @@ app.use('/api/users', UserRouter);
 app.use('/api/devices', DeviceRouter);
 app.use('/api/alerts', AlertRouter);
 app.use('/api/logs', LogRouter);
-// app.use('/api/auth', AuthRouter);
+app.use('/api/auth', AuthRouter);
 // app.use('/api/dashboard', DashboardRouter);
 
 // catch 404 and forward to error handler
