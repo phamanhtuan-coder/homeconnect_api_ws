@@ -23,14 +23,6 @@ module.exports = function (sequelize, DataTypes) {
         model: 'users',
         key: 'UserID'
       }
-    },
-    OwnerUserID: {
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      references: {
-        model: 'users',
-        key: 'UserID'
-      }
     }
   }, {
     sequelize,
@@ -40,19 +32,11 @@ module.exports = function (sequelize, DataTypes) {
 
   // Định nghĩa các association trong model
   SharedPermissions.associate = (models) => {
-    // Người nhận thiết bị
     SharedPermissions.belongsTo(models.users, {
       foreignKey: 'SharedWithUserID',
       as: 'SharedWithUser'
     });
 
-    // Người chia sẻ thiết bị
-    SharedPermissions.belongsTo(models.users, {
-      foreignKey: 'OwnerUserID',
-      as: 'OwnerUser'
-    });
-
-    // Thiết bị liên quan đến sharedpermissions
     SharedPermissions.belongsTo(models.devices, {
       foreignKey: 'DeviceID',
       as: 'Device'
