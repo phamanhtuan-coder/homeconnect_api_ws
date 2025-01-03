@@ -7,6 +7,7 @@ const logger = require('morgan');
 // Import routers
 const UserRouter = require('./src/routes/UserRouter');
 const SharedPermissionRouter = require('./src/routes/SharedPermissionRouter');
+const SpaceRouter = require('./src/routes/SpaceRouter');
 const DeviceRouter = require('./src/routes/DeviceRouter');
 const AlertRouter = require('./src/routes/AlertRouter');
 const LogRouter = require('./src/routes/LogRouter');
@@ -26,6 +27,7 @@ const { authenticate } = require('./src/middlewares/authMiddleware');
 // API routes
 app.use('/api/users', UserRouter);
 app.use('/api/sharedpermissions', SharedPermissionRouter);
+app.use('/api/spaces', SpaceRouter);
 app.use('/api/devices', DeviceRouter);
 app.use('/api/alerts', AlertRouter);
 app.use('/api/logs', LogRouter);
