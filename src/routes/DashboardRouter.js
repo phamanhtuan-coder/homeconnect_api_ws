@@ -22,7 +22,7 @@ router.get('/statistics', authenticate, getDeviceStatistics);
 router.get('/pending-alerts', authenticate, getPendingAlerts);
 
 // Thống kê thiết bị trong 7 ngày gần nhất
-router.get('/weekly-statistics', authenticate, getDeviceStatisticsForWeek);
+// router.get('/weekly-statistics', authenticate, getDeviceStatisticsForWeek);
 
 // Thống kê thiết bị trong 1 ngày
 router.get('/daily-statistics', authenticate, getDeviceStatisticsForDay);
