@@ -1,61 +1,38 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('synctracking', {
+
+module.exports = function (sequelize, DataTypes) {
+  const SyncTracking = sequelize.define('synctracking', {
     SyncID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
       allowNull: false,
       primaryKey: true
     },
-    UserID: {
+    DeviceID: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'users',
-        key: 'UserID'
-      }
+      allowNull: true
     },
     DeviceName: {
       type: DataTypes.STRING(100),
       allowNull: false
     },
-    DeviceID: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    },
-    IPAddress: {
-      type: DataTypes.STRING(45),
-      allowNull: true
-    },
-    LastSyncedAt: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
     SyncStatus: {
       type: DataTypes.BOOLEAN,
       allowNull: true,
-      defaultValue: 0
+      defaultValue: false
     }
   }, {
     sequelize,
     tableName: 'synctracking',
-    timestamps: true,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "SyncID" },
-        ]
-      },
-      {
-        name: "UserID",
-        using: "BTREE",
-        fields: [
-          { name: "UserID" },
-        ]
-      },
-    ]
+    timestamps: true
   });
+
+  SyncTracking.associate = function (models) {
+    SyncTracking.belongsTo(models.devices, {
+      foreignKey: 'DeviceID',
+      as: 'Device'
+    });
+  };
+
+  return SyncTracking;
 };

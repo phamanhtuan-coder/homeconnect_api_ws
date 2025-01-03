@@ -1,5 +1,6 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+
+module.exports = function (sequelize, DataTypes) {
   const DeviceType = sequelize.define('devicetypes', {
     TypeID: {
       autoIncrement: true,
@@ -14,6 +15,15 @@ module.exports = function(sequelize, DataTypes) {
     Attributes: {
       type: DataTypes.JSON,
       allowNull: true
+    },
+    Rules: {
+      type: DataTypes.JSON,
+      allowNull: true
+    },
+    IsDeleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: 0
     }
   }, {
     sequelize,
@@ -21,10 +31,10 @@ module.exports = function(sequelize, DataTypes) {
     timestamps: true
   });
 
-  DeviceType.associate = function(models) {
+  DeviceType.associate = function (models) {
     DeviceType.hasMany(models.devices, {
       foreignKey: 'TypeID',
-      as: 'Devices'  // Alias là Devices
+      as: 'Devices'
     });
   };
 

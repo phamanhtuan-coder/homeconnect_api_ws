@@ -1,5 +1,6 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+
+module.exports = function (sequelize, DataTypes) {
   const Device = sequelize.define('devices', {
     DeviceID: {
       autoIncrement: true,
@@ -9,11 +10,15 @@ module.exports = function(sequelize, DataTypes) {
     },
     TypeID: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'devicetypes',
-        key: 'TypeID'
-      }
+      allowNull: true
+    },
+    SpaceID: {
+      type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    UserID: {
+      type: DataTypes.INTEGER,
+      allowNull: true
     },
     Name: {
       type: DataTypes.STRING(100),
@@ -27,6 +32,19 @@ module.exports = function(sequelize, DataTypes) {
     Attribute: {
       type: DataTypes.JSON,
       allowNull: true
+    },
+    WifiSSID: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    WifiPassword: {
+      type: DataTypes.STRING(50),
+      allowNull: true
+    },
+    IsDeleted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: 0
     }
   }, {
     sequelize,
@@ -34,11 +52,31 @@ module.exports = function(sequelize, DataTypes) {
     timestamps: true
   });
 
-  // Định nghĩa mối quan hệ với devicetypes
-  Device.associate = function(models) {
+  // Định nghĩa các mối quan hệ
+  Device.associate = function (models) {
     Device.belongsTo(models.devicetypes, {
       foreignKey: 'TypeID',
-      as: 'DeviceType'  // Alias là DeviceType
+      as: 'DeviceType'  // Liên kết tới DeviceType
+    });
+
+    Device.belongsTo(models.spaces, {
+      foreignKey: 'SpaceID',
+      as: 'Space'
+    });
+
+    Device.belongsTo(models.houses, {
+      foreignKey: 'HouseID',
+      as: 'House'
+    });
+
+    Device.hasOne(models.synctracking, {
+      foreignKey: 'DeviceID',
+      as: 'SyncStatus'
+    });
+
+    Device.hasMany(models.sharedpermissions, {
+      foreignKey: 'DeviceID',
+      as: 'SharedUsers'
     });
   };
 

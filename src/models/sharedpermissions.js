@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 module.exports = function (sequelize, DataTypes) {
-  const SharedPermissions = sequelize.define('sharedpermissions', {
+  const SharedPermission = sequelize.define('sharedpermissions', {
     PermissionID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -10,19 +10,11 @@ module.exports = function (sequelize, DataTypes) {
     },
     DeviceID: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'devices',
-        key: 'DeviceID'
-      }
+      allowNull: true
     },
     SharedWithUserID: {
       type: DataTypes.INTEGER,
-      allowNull: true,
-      references: {
-        model: 'users',
-        key: 'UserID'
-      }
+      allowNull: true
     }
   }, {
     sequelize,
@@ -30,18 +22,17 @@ module.exports = function (sequelize, DataTypes) {
     timestamps: true
   });
 
-  // Định nghĩa các association trong model
-  SharedPermissions.associate = (models) => {
-    SharedPermissions.belongsTo(models.users, {
-      foreignKey: 'SharedWithUserID',
-      as: 'SharedWithUser'
-    });
-
-    SharedPermissions.belongsTo(models.devices, {
+  SharedPermission.associate = function (models) {
+    SharedPermission.belongsTo(models.devices, {
       foreignKey: 'DeviceID',
       as: 'Device'
     });
+
+    SharedPermission.belongsTo(models.users, {
+      foreignKey: 'SharedWithUserID',
+      as: 'SharedWithUser'
+    });
   };
 
-  return SharedPermissions;
+  return SharedPermission;
 };

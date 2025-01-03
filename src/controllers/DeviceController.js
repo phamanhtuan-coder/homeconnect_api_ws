@@ -1,7 +1,9 @@
-const { devices, devicetypes } = require('../models');
+const { devices, devicetypes, spaces, houses, synctracking } = require('../models');
 const wsServer = require('../ws/wsServer');
 
-// Tạo thiết bị
+/**
+ * Tạo thiết bị mới (Create Device)
+ */
 exports.createDevice = async (req, res) => {
     try {
         const device = await devices.create(req.body);
@@ -11,24 +13,57 @@ exports.createDevice = async (req, res) => {
     }
 };
 
-// Lấy tất cả thiết bị
+/**
+ * Lấy tất cả thiết bị (Get All Devices)
+ */
 exports.getAllDevices = async (req, res) => {
     try {
-        const deviceList = await devices.findAll();
+        const deviceList = await devices.findAll({
+            include: [
+                {
+                    model: devicetypes,
+                    as: 'DeviceType'
+                },
+                {
+                    model: spaces,
+                    as: 'Space'
+                },
+                {
+                    model: houses,
+                    as: 'House'
+                }
+            ]
+        });
         res.status(200).json(deviceList);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
-// Lấy thiết bị theo ID
+/**
+ * Lấy thiết bị theo ID (Get Device by ID)
+ */
 exports.getDeviceById = async (req, res) => {
     try {
         const device = await devices.findByPk(req.params.id, {
-            include: {
-                model: devicetypes,
-                as: 'DeviceType'  // Chú ý alias phải trùng với alias trong model
-            }
+            include: [
+                {
+                    model: devicetypes,
+                    as: 'DeviceType'
+                },
+                {
+                    model: spaces,
+                    as: 'Space'
+                },
+                {
+                    model: houses,
+                    as: 'House'
+                },
+                {
+                    model: synctracking,
+                    as: 'SyncStatus'
+                }
+            ]
         });
 
         if (!device) {
@@ -41,8 +76,9 @@ exports.getDeviceById = async (req, res) => {
     }
 };
 
-
-// Cập nhật thiết bị
+/**
+ * Cập nhật thiết bị (Update Device)
+ */
 exports.updateDeviceById = async (req, res) => {
     try {
         const device = await devices.findByPk(req.params.id);
@@ -55,7 +91,9 @@ exports.updateDeviceById = async (req, res) => {
     }
 };
 
-// Xóa thiết bị
+/**
+ * Xóa thiết bị (Delete Device)
+ */
 exports.deleteDeviceById = async (req, res) => {
     try {
         const device = await devices.findByPk(req.params.id);
@@ -68,7 +106,9 @@ exports.deleteDeviceById = async (req, res) => {
     }
 };
 
-// Bật/Tắt thiết bị qua WebSocket
+/**
+ * Bật/Tắt thiết bị (Toggle Device Power)
+ */
 exports.toggleDevice = async (req, res) => {
     try {
         const { id } = req.params;
@@ -94,10 +134,12 @@ exports.toggleDevice = async (req, res) => {
     }
 };
 
-// Lấy danh sách thiết bị với bộ lọc
+/**
+ * Lấy thiết bị với bộ lọc (Get Filtered Devices)
+ */
 exports.getFilteredDevices = async (req, res) => {
     try {
-        const { userId, spaceId, powerStatus } = req.query;
+        const { userId, spaceId, houseId, powerStatus } = req.query;
 
         const whereConditions = {};
 
@@ -107,12 +149,29 @@ exports.getFilteredDevices = async (req, res) => {
         if (spaceId) {
             whereConditions.SpaceID = spaceId;
         }
+        if (houseId) {
+            whereConditions.HouseID = houseId;
+        }
         if (powerStatus !== undefined) {
             whereConditions.PowerStatus = powerStatus === 'true';
         }
 
         const filteredDevices = await devices.findAll({
-            where: whereConditions
+            where: whereConditions,
+            include: [
+                {
+                    model: devicetypes,
+                    as: 'DeviceType'
+                },
+                {
+                    model: spaces,
+                    as: 'Space'
+                },
+                {
+                    model: houses,
+                    as: 'House'
+                }
+            ]
         });
 
         res.status(200).json(filteredDevices);
@@ -121,7 +180,9 @@ exports.getFilteredDevices = async (req, res) => {
     }
 };
 
-// Chỉnh độ sáng và màu sắc
+/**
+ * Cập nhật độ sáng và màu sắc (Update Device Attributes)
+ */
 exports.updateDeviceAttributes = async (req, res) => {
     try {
         const { id } = req.params;
@@ -138,9 +199,8 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(404).json({ error: 'Device not found' });
         }
 
-        const supportedAttributes = device.devicetypes.Attributes;
+        const supportedAttributes = device.DeviceType.Attributes;
 
-        // Kiểm tra thiết bị có hỗ trợ brightness và color không
         if (supportedAttributes.brightness) {
             device.Attribute.brightness = brightness;
         }
@@ -148,14 +208,12 @@ exports.updateDeviceAttributes = async (req, res) => {
             device.Attribute.color = color;
         }
 
-        // Cập nhật lại thuộc tính
         await device.update({ Attribute: device.Attribute });
 
-        // Gửi lệnh qua WebSocket nếu thiết bị đang kết nối
         wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
-            brightness: brightness,
-            color: color
+            brightness,
+            color
         });
 
         res.status(200).json({
