@@ -1,6 +1,6 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('alerts', {
+module.exports = function (sequelize, DataTypes) {
+  const Alerts = sequelize.define('alerts', {
     AlertID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -56,44 +56,26 @@ module.exports = function(sequelize, DataTypes) {
   }, {
     sequelize,
     tableName: 'alerts',
-    timestamps: false,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "AlertID" },
-        ]
-      },
-      {
-        name: "DeviceID",
-        using: "BTREE",
-        fields: [
-          { name: "DeviceID" },
-        ]
-      },
-      {
-        name: "SpaceID",
-        using: "BTREE",
-        fields: [
-          { name: "SpaceID" },
-        ]
-      },
-      {
-        name: "TypeID",
-        using: "BTREE",
-        fields: [
-          { name: "TypeID" },
-        ]
-      },
-      {
-        name: "AlertTypeID",
-        using: "BTREE",
-        fields: [
-          { name: "AlertTypeID" },
-        ]
-      },
-    ]
+    timestamps: false
   });
+
+  // Định nghĩa các association trong model
+  Alerts.associate = (models) => {
+    Alerts.belongsTo(models.devices, {
+      foreignKey: 'DeviceID',
+      as: 'Device'
+    });
+
+    Alerts.belongsTo(models.alerttypes, {
+      foreignKey: 'AlertTypeID',
+      as: 'AlertType'
+    });
+
+    Alerts.belongsTo(models.spaces, {
+      foreignKey: 'SpaceID',
+      as: 'Space'
+    });
+  };
+
+  return Alerts;
 };
