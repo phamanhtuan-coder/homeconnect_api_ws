@@ -1,30 +1,32 @@
-// src/routes/UserRouter.js
-
 const express = require('express');
-const { createUser, getAllUsers, getUserById, updateUserById, deleteUserById, loginUser } = require('../controllers/UserController');
+const {
+    getAllUsers,
+    getUserById,
+    updateUserById,
+    deleteUserById,
+    getUserSharedDevices,
+    getSharedWithDevices
+} = require('../controllers/UserController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
-// Create a new user
-router.post('/', createUser);
-
-// User login (for mobile app)
-router.post('/login', loginUser);
-
-// Get all users
+// Lấy tất cả người dùng (yêu cầu auth)
 router.get('/', authenticate, getAllUsers);
 
-// Get user by ID
+// Lấy thông tin người dùng theo ID
 router.get('/:id', authenticate, getUserById);
 
-// Update user by ID
+// Cập nhật thông tin người dùng
 router.put('/:id', authenticate, updateUserById);
 
-// Delete user by ID
+// Xóa người dùng
 router.delete('/:id', authenticate, deleteUserById);
 
-// Assign role to a user
-// router.post('/:userId/roles', authenticate, assignRoleToUser);
+// Lấy thiết bị mà người dùng đã chia sẻ
+router.get('/:id/shared', authenticate, getUserSharedDevices);
+
+// Lấy thiết bị được chia sẻ với người dùng
+router.get('/:id/shared-with', authenticate, getSharedWithDevices);
 
 module.exports = router;

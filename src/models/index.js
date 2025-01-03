@@ -26,9 +26,10 @@ fs.readdirSync(__dirname)
 // Gọi phương thức associate cho từng model
 Object.keys(db).forEach(modelName => {
     if (db[modelName].associate) {
-        db[modelName].associate(db);  // Quan trọng, đảm bảo gọi associate
+        db[modelName].associate(db);  // Đảm bảo tất cả các association đều được định nghĩa
     }
 });
+
 
 db.sequelize = sequelize;
 db.Sequelize = Sequelize;

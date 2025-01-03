@@ -1,6 +1,7 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('sharedpermissions', {
+
+module.exports = function (sequelize, DataTypes) {
+  const SharedPermissions = sequelize.define('sharedpermissions', {
     PermissionID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -22,34 +23,41 @@ module.exports = function(sequelize, DataTypes) {
         model: 'users',
         key: 'UserID'
       }
+    },
+    OwnerUserID: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'users',
+        key: 'UserID'
+      }
     }
   }, {
     sequelize,
     tableName: 'sharedpermissions',
-    timestamps: true,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "PermissionID" },
-        ]
-      },
-      {
-        name: "DeviceID",
-        using: "BTREE",
-        fields: [
-          { name: "DeviceID" },
-        ]
-      },
-      {
-        name: "SharedWithUserID",
-        using: "BTREE",
-        fields: [
-          { name: "SharedWithUserID" },
-        ]
-      },
-    ]
+    timestamps: true
   });
+
+  // Định nghĩa các association trong model
+  SharedPermissions.associate = (models) => {
+    // Người nhận thiết bị
+    SharedPermissions.belongsTo(models.users, {
+      foreignKey: 'SharedWithUserID',
+      as: 'SharedWithUser'
+    });
+
+    // Người chia sẻ thiết bị
+    SharedPermissions.belongsTo(models.users, {
+      foreignKey: 'OwnerUserID',
+      as: 'OwnerUser'
+    });
+
+    // Thiết bị liên quan đến sharedpermissions
+    SharedPermissions.belongsTo(models.devices, {
+      foreignKey: 'DeviceID',
+      as: 'Device'
+    });
+  };
+
+  return SharedPermissions;
 };

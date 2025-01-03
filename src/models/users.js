@@ -1,6 +1,7 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
-  return sequelize.define('users', {
+
+module.exports = function (sequelize, DataTypes) {
+  const Users = sequelize.define('users', {
     UserID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -21,55 +22,42 @@ module.exports = function(sequelize, DataTypes) {
       allowNull: true,
       defaultValue: 0
     },
-    VerificationCode: {
-      type: DataTypes.STRING(255),
-      allowNull: true
-    },
-    VerificationExpiry: {
-      type: DataTypes.DATE,
-      allowNull: true
-    },
     PasswordHash: {
       type: DataTypes.STRING(255),
       allowNull: false
-    },
-    Phone: {
-      type: DataTypes.STRING(20),
-      allowNull: true
-    },
-    Address: {
-      type: DataTypes.TEXT,
-      allowNull: true
-    },
-    DateOfBirth: {
-      type: DataTypes.DATEONLY,
-      allowNull: true
-    },
-    ProfileImage: {
-      type: DataTypes.BLOB,
-      allowNull: true
     }
   }, {
     sequelize,
     tableName: 'users',
-    timestamps: true,
-    indexes: [
-      {
-        name: "PRIMARY",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "UserID" },
-        ]
-      },
-      {
-        name: "Email",
-        unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "Email" },
-        ]
-      },
-    ]
+    timestamps: true
   });
+
+  // Định nghĩa các association trong model
+  Users.associate = (models) => {
+    // Người dùng sở hữu nhiều thiết bị
+    Users.hasMany(models.devices, {
+      foreignKey: 'UserID',
+      as: 'OwnedDevices'
+    });
+
+    // Người dùng có thể sinh ra nhiều log hoạt động
+    Users.hasMany(models.logs, {
+      foreignKey: 'UserID',
+      as: 'Logs'
+    });
+
+    // Thiết bị mà người dùng được chia sẻ (user nhận)
+    Users.hasMany(models.sharedpermissions, {
+      foreignKey: 'SharedWithUserID',
+      as: 'DevicesSharedWithUser'
+    });
+
+    // Thiết bị mà người dùng chia sẻ cho người khác (user chia sẻ đi)
+    Users.hasMany(models.sharedpermissions, {
+      foreignKey: 'OwnerUserID',  // Người chia sẻ thiết bị
+      as: 'DevicesUserShared'
+    });
+  };
+
+  return Users;
 };
