@@ -64,10 +64,6 @@ module.exports = function (sequelize, DataTypes) {
       as: 'Space'
     });
 
-    Device.belongsTo(models.houses, {
-      foreignKey: 'HouseID',
-      as: 'House'
-    });
 
     Device.hasOne(models.synctracking, {
       foreignKey: 'DeviceID',
