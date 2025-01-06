@@ -24,31 +24,51 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id, {
-            include: [
-                {
-                    model: devices,
-                    as: 'OwnedDevices'
-                },
-                {
-                    model: logs,
-                    as: 'Logs'
-                },
-                {
-                    model: sharedpermissions,
-                    as: 'DevicesSharedWithUser',
-                    include: {
-                        model: devices,
-                        as: 'Device'
-                    }
-                }
-            ]
+            attributes: { exclude: ['PasswordHash'] }  // Không lấy hash mật khẩu
         });
-        if (!user) return res.status(404).json({ error: 'User not found' });
-        res.status(200).json(user);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // Lấy thiết bị thuộc sở hữu của người dùng
+        const ownedDevices = await devices.findAll({
+            where: { UserID: user.UserID },
+            attributes: ['DeviceID', 'Name', 'TypeID', 'PowerStatus']
+        });
+
+        // Lấy log của người dùng
+        const userLogs = await logs.findAll({
+            where: { UserID: user.UserID },
+            attributes: ['LogID', 'DeviceID', 'Action', 'Timestamp']
+        });
+
+        // Lấy thiết bị được chia sẻ với người dùng
+        const sharedWithUser = await sharedpermissions.findAll({
+            where: { SharedWithUserID: user.UserID },
+            include: {
+                model: devices,
+                as: 'Device',
+                attributes: ['DeviceID', 'Name', 'TypeID']
+            },
+            attributes: { exclude: [ 'updatedAt','OwnerUserID'] }  // updatedAt
+        });
+
+
+        // Gắn thêm dữ liệu vào user
+        const userData = {
+            ...user.toJSON(),
+            OwnedDevices: ownedDevices,
+            Logs: userLogs,
+            DevicesSharedWithUser: sharedWithUser
+        };
+
+        res.status(200).json(userData);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Cập nhật thông tin người dùng (Update User)

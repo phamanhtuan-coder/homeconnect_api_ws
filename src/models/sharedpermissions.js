@@ -19,7 +19,7 @@ module.exports = function (sequelize, DataTypes) {
   }, {
     sequelize,
     tableName: 'sharedpermissions',
-    timestamps: true
+    timestamps:false
   });
 
   SharedPermission.associate = function (models) {
