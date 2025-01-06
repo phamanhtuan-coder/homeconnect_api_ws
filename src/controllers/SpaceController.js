@@ -58,24 +58,34 @@ exports.updateSpace = async (req, res) => {
         const userId = req.user.id;
         const { Name } = req.body;
 
+        // Tìm không gian kèm thông tin nhà
         const space = await spaces.findOne({
-            where: { SpaceID: id },
-            include: { model: houses, as: 'House', where: { UserID: userId } }
+            where: { SpaceID: id, IsDeleted: false },  // Lọc IsDeleted
+            include: {
+                model: houses,
+                as: 'House',
+                where: { UserID: userId }
+            }
         });
 
         if (!space) {
             return res.status(404).json({ error: 'Space not found or access denied' });
         }
 
+        // Cập nhật thông tin không gian
         await space.update({ Name });
-        res.status(200).json({ message: 'Space updated successfully', space });
+        res.status(200).json({
+            message: 'Space updated successfully',
+            space
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
 
+
 /**
- * Xóa không gian (Delete Space)
+ * Xóa mềm không gian (Soft Delete Space)
  */
 exports.deleteSpaceById = async (req, res) => {
     try {
@@ -83,20 +93,26 @@ exports.deleteSpaceById = async (req, res) => {
         const userId = req.user.id;
 
         const space = await spaces.findOne({
-            where: { SpaceID: id },
-            include: { model: houses, as: 'House', where: { UserID: userId } }
+            where: { SpaceID: id, IsDeleted: false },  // Lọc không gian chưa bị xóa
+            include: {
+                model: houses,
+                as: 'House',
+                where: { UserID: userId }
+            }
         });
 
         if (!space) {
             return res.status(404).json({ error: 'Space not found or access denied' });
         }
 
-        await space.destroy();
+        // Cập nhật trạng thái xóa mềm
+        await space.update({ IsDeleted: true });
         res.status(200).json({ message: 'Space deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Thêm thiết bị vào không gian (Assign Device to Space)

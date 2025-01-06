@@ -21,17 +21,22 @@ exports.createHouse = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 /**
  * Lấy danh sách nhà của người dùng (Get All Houses by User)
+ * Bỏ qua nhà đã bị xóa mềm (isDeleted = true)
  */
 exports.getAllHousesByUser = async (req, res) => {
     try {
         const userId = req.user.id;
 
         const houseList = await houses.findAll({
-            where: { UserID: userId },
-            include: { model: spaces, as: 'Spaces' }
+            where: { UserID: userId, IsDeleted: false },  // Lọc bỏ các nhà bị xóa mềm
+            include: {
+                model: spaces,
+                as: 'Spaces',
+                attributes: ['SpaceID', 'Name']  // Loại bỏ TypeID, chỉ lấy SpaceID và Name
+            },
+            attributes: ['HouseID', 'Name', 'Address', 'IconName', 'IconColor']  // Lọc các cột trả về
         });
 
         res.status(200).json(houseList);
@@ -40,8 +45,10 @@ exports.getAllHousesByUser = async (req, res) => {
     }
 };
 
+
 /**
  * Lấy thông tin chi tiết nhà theo ID (Get House by ID)
+ * Bỏ qua nhà đã bị xóa mềm
  */
 exports.getHouseById = async (req, res) => {
     try {
@@ -49,8 +56,12 @@ exports.getHouseById = async (req, res) => {
         const userId = req.user.id;
 
         const house = await houses.findOne({
-            where: { HouseID: id, UserID: userId },
-            include: { model: spaces, as: 'Spaces' }
+            where: { HouseID: id, UserID: userId, IsDeleted: false },
+            include: {
+                model: spaces,
+                as: 'Spaces',
+                attributes: ['SpaceID', 'Name']  // Loại bỏ TypeID, chỉ giữ SpaceID và Name
+            }
         });
 
         if (!house) {
@@ -63,6 +74,7 @@ exports.getHouseById = async (req, res) => {
     }
 };
 
+
 /**
  * Cập nhật thông tin nhà (Update House)
  */
@@ -72,13 +84,14 @@ exports.updateHouseById = async (req, res) => {
         const userId = req.user.id;
 
         const house = await houses.findOne({
-            where: { HouseID: id, UserID: userId }
+            where: { HouseID: id, UserID: userId, IsDeleted: false }
         });
 
         if (!house) {
             return res.status(404).json({ error: 'House not found or access denied' });
         }
 
+        // Cập nhật dữ liệu
         await house.update(req.body);
         res.status(200).json({ message: 'House updated successfully', house });
     } catch (error) {
@@ -88,6 +101,7 @@ exports.updateHouseById = async (req, res) => {
 
 /**
  * Xóa nhà (Delete House)
+ * Xóa mềm (soft delete) bằng cách cập nhật IsDeleted = true
  * Kiểm tra xem có space nào thuộc nhà không trước khi xóa
  */
 exports.deleteHouseById = async (req, res) => {
@@ -96,7 +110,7 @@ exports.deleteHouseById = async (req, res) => {
         const userId = req.user.id;
 
         const house = await houses.findOne({
-            where: { HouseID: id, UserID: userId }
+            where: { HouseID: id, UserID: userId, IsDeleted: false }
         });
 
         if (!house) {
@@ -108,7 +122,10 @@ exports.deleteHouseById = async (req, res) => {
             return res.status(400).json({ error: 'Cannot delete house with existing spaces' });
         }
 
-        await house.destroy();
+        // Xóa mềm bằng cách cập nhật IsDeleted
+        house.IsDeleted = true;
+        await house.save();
+
         res.status(200).json({ message: 'House deleted successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
