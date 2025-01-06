@@ -1,22 +1,32 @@
 const { logs, devices, users, spaces } = require('../models');
 
+
 // Tạo log mới
 exports.createLog = async (req, res) => {
     try {
         const { DeviceID, Action, Details } = req.body;
 
-        // Kiểm tra thiết bị có tồn tại không
-        const device = await devices.findByPk(DeviceID);
+        // Kiểm tra thiết bị có tồn tại không và lấy SpaceID từ thiết bị
+        const device = await devices.findOne({
+            where: { DeviceID },
+            attributes: ['DeviceID', 'SpaceID']  // Chỉ lấy DeviceID và SpaceID
+        });
+
         if (!device) {
             return res.status(404).json({ error: 'Device not found' });
         }
 
+        // Tạo log mới với SpaceID từ thiết bị
         const log = await logs.create({
             DeviceID,
-            UserID: req.user.id,  // Lấy từ token auth
+            SpaceID: device.SpaceID,
+            UserID: req.user.id,
             Action,
             Details
+        }, {
+            fields: ['DeviceID', 'SpaceID', 'UserID', 'Action', 'Details', 'Timestamp']  // Chỉ thêm các cột có sẵn
         });
+
 
         res.status(201).json(log);
     } catch (error) {
@@ -139,6 +149,41 @@ exports.deleteLogById = async (req, res) => {
 
         await log.destroy();
         res.status(204).send();
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Lấy tất cả log theo UserID (Get Logs by UserID)
+ */
+exports.getLogsByUser = async (req, res) => {
+    try {
+        const userId = req.user.id;  // Lấy UserID từ token hoặc session
+
+        // Tìm tất cả logs của người dùng
+        const userLogs = await logs.findAll({
+            where: { UserID: userId },
+            include: [
+                {
+                    model: devices,
+                    as: 'Device',
+                    attributes: ['DeviceID', 'Name']  // Lấy tên và ID thiết bị
+                },
+                {
+                    model: spaces,
+                    as: 'Space',
+                    attributes: ['SpaceID', 'Name']  // Lấy tên và ID không gian
+                }
+            ],
+            order: [['Timestamp', 'DESC']]  // Sắp xếp log theo thời gian mới nhất
+        });
+
+        if (userLogs.length === 0) {
+            return res.status(404).json({ message: 'No logs found for this user' });
+        }
+
+        res.status(200).json(userLogs);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

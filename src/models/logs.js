@@ -1,5 +1,6 @@
 const Sequelize = require('sequelize');
-module.exports = function(sequelize, DataTypes) {
+
+module.exports = function (sequelize, DataTypes) {
   const Log = sequelize.define('logs', {
     LogID: {
       autoIncrement: true,
@@ -13,7 +14,9 @@ module.exports = function(sequelize, DataTypes) {
       references: {
         model: 'devices',
         key: 'DeviceID'
-      }
+      },
+      onDelete: 'SET NULL',  // Khi thiết bị bị xóa, log sẽ không bị xóa
+      onUpdate: 'CASCADE'
     },
     UserID: {
       type: DataTypes.INTEGER,
@@ -21,7 +24,9 @@ module.exports = function(sequelize, DataTypes) {
       references: {
         model: 'users',
         key: 'UserID'
-      }
+      },
+      onDelete: 'SET NULL',  // Khi người dùng bị xóa, log sẽ không bị xóa
+      onUpdate: 'CASCADE'
     },
     SpaceID: {
       type: DataTypes.INTEGER,
@@ -29,20 +34,24 @@ module.exports = function(sequelize, DataTypes) {
       references: {
         model: 'spaces',
         key: 'SpaceID'
-      }
+      },
+      onDelete: 'SET NULL',  // Khi không gian bị xóa, log sẽ không bị xóa
+      onUpdate: 'CASCADE'
     },
     Action: {
       type: DataTypes.JSON,
-      allowNull: true
+      allowNull: true,
+      comment: 'Chi tiết hành động thực hiện trên thiết bị'
     },
     Timestamp: {
       type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: Sequelize.Sequelize.fn('now')
+      allowNull: false,
+      defaultValue: Sequelize.NOW
     },
     Details: {
       type: DataTypes.JSON,
-      allowNull: true
+      allowNull: true,
+      comment: 'Thông tin chi tiết về log hoặc dữ liệu bổ sung'
     }
   }, {
     sequelize,
@@ -50,52 +59,46 @@ module.exports = function(sequelize, DataTypes) {
     timestamps: false,
     indexes: [
       {
-        name: "PRIMARY",
+        name: 'PRIMARY',
         unique: true,
-        using: "BTREE",
-        fields: [
-          { name: "LogID" }
-        ]
+        fields: ['LogID']
       },
       {
-        name: "DeviceID",
-        using: "BTREE",
-        fields: [
-          { name: "DeviceID" }
-        ]
+        name: 'DeviceIndex',
+        fields: ['DeviceID']
       },
       {
-        name: "UserID",
-        using: "BTREE",
-        fields: [
-          { name: "UserID" }
-        ]
+        name: 'UserIndex',
+        fields: ['UserID']
       },
       {
-        name: "SpaceID",
-        using: "BTREE",
-        fields: [
-          { name: "SpaceID" }
-        ]
+        name: 'SpaceIndex',
+        fields: ['SpaceID']
       }
     ]
   });
 
   // Định nghĩa các mối quan hệ
-  Log.associate = function(models) {
+  Log.associate = function (models) {
     Log.belongsTo(models.devices, {
       foreignKey: 'DeviceID',
-      as: 'Device'
+      as: 'Device',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     });
 
     Log.belongsTo(models.users, {
       foreignKey: 'UserID',
-      as: 'User'
+      as: 'User',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     });
 
     Log.belongsTo(models.spaces, {
       foreignKey: 'SpaceID',
-      as: 'Space'
+      as: 'Space',
+      onDelete: 'SET NULL',
+      onUpdate: 'CASCADE'
     });
   };
 

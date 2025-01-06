@@ -5,9 +5,11 @@ const {
     getLogById,
     deleteLogById,
     getLogsByDeviceId,
-    getLogsBySpaceId
+    getLogsBySpaceId,
+    getLogsByUser
 } = require('../controllers/LogController');
 const { authenticate } = require('../middlewares/authMiddleware');
+const {getDeviceById} = require("../controllers/DeviceController");
 
 const router = express.Router();
 
@@ -28,5 +30,8 @@ router.get('/:id', authenticate, getLogById);
 
 // Xóa log theo ID
 router.delete('/:id', authenticate, deleteLogById);
+
+// Lấy log theo UserID
+router.get('/user/:userId', authenticate, getLogsByUser) ;
 
 module.exports = router;
