@@ -17,6 +17,27 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false,
         unique: true
       },
+      EmailVerified: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
+      VerificationCode: {
+        type: DataTypes.STRING(255),
+        allowNull: true
+      },
+      VerificationExpiry: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      PasswordHash: {
+        type: DataTypes.STRING(255),
+        allowNull: false
+      },
+      ProfileImage: {
+        type: DataTypes.BLOB('long'),
+        allowNull: true
+      },
       Phone: {
         type: DataTypes.STRING(20),
         allowNull: true
