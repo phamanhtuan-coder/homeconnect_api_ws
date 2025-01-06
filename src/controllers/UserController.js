@@ -76,14 +76,36 @@ exports.getUserById = async (req, res) => {
 exports.updateUserById = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
-        await user.update(req.body);
-        res.status(200).json(user);
+        // Lọc các trường có thể cập nhật từ req.body (Loại bỏ updatedAt)
+        const updateData = {
+            Name: req.body.Name,
+            Email: req.body.Email,
+            Phone: req.body.Phone,
+            Address: req.body.Address,
+            DateOfBirth: req.body.DateOfBirth
+        };
+
+        // Cập nhật người dùng (Không gửi updatedAt vào)
+        await user.update(updateData, {
+            fields: ['Name', 'Email', 'Phone', 'Address', 'DateOfBirth']  // Chỉ cập nhật các trường cần thiết
+        });
+
+        res.status(200).json({
+            message: 'User updated successfully',
+            user
+        });
     } catch (error) {
         res.status(400).json({ error: error.message });
     }
 };
+
+
+
+
 
 /**
  * Xóa người dùng (Delete User)

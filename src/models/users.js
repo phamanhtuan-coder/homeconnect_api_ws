@@ -1,38 +1,52 @@
 const Sequelize = require('sequelize');
 
 module.exports = function (sequelize, DataTypes) {
-  const Users = sequelize.define('users', {
-    UserID: {
-      autoIncrement: true,
-      type: DataTypes.INTEGER,
-      allowNull: false,
-      primaryKey: true
-    },
-    Name: {
-      type: DataTypes.STRING(100),
-      allowNull: false
-    },
-    Email: {
-      type: DataTypes.STRING(100),
-      allowNull: false,
-      unique: "Email"
-    },
-    EmailVerified: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-      defaultValue: 0
-    },
-    PasswordHash: {
-      type: DataTypes.STRING(255),
-      allowNull: false
-    }
-  }, {
-    sequelize,
-    tableName: 'users',
-    timestamps: true
-  });
+    const Users = sequelize.define('users', {
+      UserID: {
+        autoIncrement: true,
+        type: DataTypes.INTEGER,
+        allowNull: false,
+        primaryKey: true
+      },
+      Name: {
+        type: DataTypes.STRING(100),
+        allowNull: false
+      },
+      Email: {
+        type: DataTypes.STRING(100),
+        allowNull: false,
+        unique: true
+      },
+      Phone: {
+        type: DataTypes.STRING(20),
+        allowNull: true
+      },
+      Address: {
+        type: DataTypes.TEXT,
+        allowNull: true
+      },
+      DateOfBirth: {
+        type: DataTypes.DATE,
+        allowNull: true
+      },
+      createdAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      },
+      updatedAt: {
+        type: DataTypes.DATE,
+        allowNull: false,
+        defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
+      }
+    }, {
+      sequelize,
+      tableName: 'users',
+      timestamps: false  // Loại bỏ timestamps để tránh updatedAt tự sinh
+    });
 
-  // Định nghĩa các association trong model
+
+    // Định nghĩa các association trong model
   Users.associate = (models) => {
     // Người dùng sở hữu nhiều thiết bị
     Users.hasMany(models.devices, {
