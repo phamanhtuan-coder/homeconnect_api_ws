@@ -8,6 +8,10 @@ module.exports = function (sequelize, DataTypes) {
       allowNull: false,
       primaryKey: true
     },
+    UserID:{
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     DeviceID: {
       type: DataTypes.INTEGER,
       allowNull: true

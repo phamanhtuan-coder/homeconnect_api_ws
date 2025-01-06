@@ -63,18 +63,22 @@ module.exports = function (sequelize, DataTypes) {
   Alerts.associate = (models) => {
     Alerts.belongsTo(models.devices, {
       foreignKey: 'DeviceID',
-      as: 'Device'
+      as: 'Device',
+      targetKey: 'DeviceID'
     });
 
     Alerts.belongsTo(models.alerttypes, {
       foreignKey: 'AlertTypeID',
-      as: 'AlertType'
+      as: 'AlertType',
+      targetKey: 'AlertTypeID'
     });
 
     Alerts.belongsTo(models.spaces, {
       foreignKey: 'SpaceID',
-      as: 'Space'
+      as: 'Space',
+      targetKey: 'SpaceID'
     });
+
   };
 
   return Alerts;

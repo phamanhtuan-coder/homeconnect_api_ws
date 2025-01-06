@@ -32,22 +32,26 @@ exports.createAlert = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
-
 // Lấy tất cả cảnh báo
 exports.getAllAlerts = async (req, res) => {
     try {
         const allAlerts = await alerts.findAll({
+            attributes: ['AlertID', 'DeviceID', 'SpaceID', 'TypeID', 'Message', 'Timestamp', 'Status', 'AlertTypeID'],
             include: [
                 {
                     model: devices,
-                    as: 'Device'
+                    as: 'Device',
+                    attributes: ['Name', 'PowerStatus']  // Chỉ lấy các trường cần thiết
                 },
                 {
                     model: alerttypes,
-                    as: 'AlertType'
+                    as: 'AlertType',
+                    attributes: ['AlertTypeName']  // Chỉ lấy AlertTypeName
                 }
-            ]
+            ],
+            nest: true  // Giúp dữ liệu được tổ chức dạng lồng nhau thay vì lặp lại cột
         });
+
         res.status(200).json(allAlerts);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -58,16 +62,20 @@ exports.getAllAlerts = async (req, res) => {
 exports.getAlertById = async (req, res) => {
     try {
         const alert = await alerts.findByPk(req.params.id, {
+            attributes: ['AlertID', 'DeviceID', 'SpaceID', 'TypeID', 'Message', 'Timestamp', 'Status', 'AlertTypeID'],
             include: [
                 {
                     model: devices,
-                    as: 'Device'
+                    as: 'Device',
+                    attributes: ['Name', 'PowerStatus']  // Chỉ lấy các cột cần thiết
                 },
                 {
                     model: alerttypes,
-                    as: 'AlertType'
+                    as: 'AlertType',
+                    attributes: ['AlertTypeName']
                 }
-            ]
+            ],
+            nest: true
         });
 
         if (!alert) {
@@ -84,14 +92,18 @@ exports.getAlertById = async (req, res) => {
 exports.getAlertsByDevice = async (req, res) => {
     try {
         const deviceAlerts = await alerts.findAll({
+            attributes: ['AlertID', 'DeviceID', 'SpaceID', 'TypeID', 'Message', 'Timestamp', 'Status', 'AlertTypeID'],
             where: {
                 DeviceID: req.params.deviceId
             },
             include: {
                 model: alerttypes,
-                as: 'AlertType'
-            }
+                as: 'AlertType',
+                attributes: ['AlertTypeName']
+            },
+            nest: true
         });
+
         res.status(200).json(deviceAlerts);
     } catch (error) {
         res.status(500).json({ error: error.message });
