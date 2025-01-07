@@ -12,12 +12,14 @@ exports.authenticate = (req, res, next) => {
     }
 
     try {
-        req.user = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;  // Ensure `id` is part of the token payload
         next();
     } catch (error) {
         res.status(403).json({ error: 'Invalid token' });
     }
 };
+
 
 
 // Middleware to check if user has admin privileges (tam thời chưa cần)

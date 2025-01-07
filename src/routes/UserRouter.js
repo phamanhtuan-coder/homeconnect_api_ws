@@ -36,6 +36,6 @@ router.get('/:id/shared-with', authenticate, getSharedWithDevices);
 router.post('/reset-password', resetPassword);
 
 // Đổi mật khẩu
-router.put('/change-password', authenticate, changePassword);
+router.put('/:id/change-password', authenticate, changePassword);
 
 module.exports = router;

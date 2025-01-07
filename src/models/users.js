@@ -87,11 +87,7 @@ module.exports = function (sequelize, DataTypes) {
       as: 'DevicesSharedWithUser'
     });
 
-    // Thiết bị mà người dùng chia sẻ cho người khác (user chia sẻ đi)
-    Users.hasMany(models.sharedpermissions, {
-      foreignKey: 'OwnerUserID',  // Người chia sẻ thiết bị
-      as: 'DevicesUserShared'
-    });
+
   };
 
   return Users;

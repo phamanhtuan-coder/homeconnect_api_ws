@@ -128,22 +128,32 @@ exports.deleteUserById = async (req, res) => {
 exports.getUserSharedDevices = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id, {
+            attributes: { exclude: ['PasswordHash'] }  // Không lấy hash mật khẩu
+        });
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        // JOIN bảng sharedpermissions với devices để lấy thiết bị mà người dùng sở hữu
+        const sharedByUser = await sharedpermissions.findAll({
             include: [
                 {
-                    model: sharedpermissions,
-                    as: 'DevicesUserShared',
-                    include: {
-                        model: devices,
-                        as: 'Device'
-                    }
+                    model: devices,
+                    as: 'Device',
+                    where: { UserID: user.UserID },  // Lọc thiết bị thuộc sở hữu của người dùng
+                    attributes: ['DeviceID', 'Name', 'TypeID']
                 }
-            ]
+            ],
+            attributes: { exclude: ['updatedAt'] }  // Bỏ thông tin không cần thiết
         });
-        res.status(200).json(user);
+
+        res.status(200).json(sharedByUser);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Lấy thiết bị được chia sẻ với người dùng (Get Devices Shared With User)
@@ -151,18 +161,23 @@ exports.getUserSharedDevices = async (req, res) => {
 exports.getSharedWithDevices = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id, {
-            include: [
-                {
-                    model: sharedpermissions,
-                    as: 'DevicesSharedWithUser',
-                    include: {
-                        model: devices,
-                        as: 'Device'
-                    }
-                }
-            ]
+            attributes: { exclude: ['PasswordHash'] }  // Không lấy hash mật khẩu
         });
-        res.status(200).json(user);
+
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const sharedWithUser = await sharedpermissions.findAll({
+            where: { SharedWithUserID: user.UserID },
+            include: {
+                model: devices,
+                as: 'Device',
+                attributes: ['DeviceID', 'Name', 'TypeID']
+            },
+            attributes: { exclude: [ 'updatedAt','OwnerUserID'] }  // updatedAt
+        });
+        res.status(200).json(sharedWithUser);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
@@ -191,14 +206,22 @@ exports.resetPassword = async (req, res) => {
  */
 exports.changePassword = async (req, res) => {
     const { oldPassword, newPassword } = req.body;
-    const userId = req.user.id;  // Người dùng hiện tại
+    const userId = req.params.id;  // Lấy từ URL params
+
+    if (!userId || isNaN(userId)) {
+        return res.status(400).json({ error: 'Invalid user ID' });
+    }
 
     try {
         const user = await users.findByPk(userId);
-        if (!user) return res.status(404).json({ error: 'User not found' });
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
 
         const isMatch = await bcrypt.compare(oldPassword, user.PasswordHash);
-        if (!isMatch) return res.status(400).json({ error: 'Old password is incorrect' });
+        if (!isMatch) {
+            return res.status(400).json({ error: 'Old password is incorrect' });
+        }
 
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         await user.update({ PasswordHash: hashedPassword });
