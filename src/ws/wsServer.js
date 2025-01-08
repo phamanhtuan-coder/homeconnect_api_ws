@@ -1,30 +1,30 @@
 const WebSocket = require('ws');
 
-// Import các model cần thiết
-// Lưu ý: Đường dẫn import tuỳ thuộc cấu trúc dự án của bạn
-const { devices, logs } = require('../models');
-const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
-// Nếu cần DeviceType, Spaces, ... thì import thêm
-// const { devicetypes, spaces, users, ... } = require('../models');
+// Import các model
+const { devices, logs, alerts } = require('../models');
+// Thêm 'alerts' để tạo cảnh báo
+const { handleSmokeSensorData } = require("../controllers/handleSmokeSensorData");
+
+// Tạo một "enum" (hoặc object) để quản lý AlertTypeID, Message
+// Bạn có thể tuỳ chỉnh ID & nội dung theo bảng alerttypes thực tế:
+const ALERT_TYPES = {
+    GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
+    TEMP_HIGH: 2,      // Giả sử AlertTypeID=2: cảnh báo nhiệt độ
+};
+
+const ALERT_MESSAGES = {
+    GAS_HIGH: 'Nồng độ khí quá cao',
+    TEMP_HIGH: 'Nhiệt độ quá cao',
+};
 
 const wss = new WebSocket.Server({ port: 4000 });
 
 // Biến cục bộ lưu trữ kết nối WebSocket của từng deviceId
 const clients = {};
 
-/**
- * Sự kiện khi có kết nối từ phía thiết bị
- * Thông thường, thiết bị sẽ kết nối với URL dạng: ws://<server>:4000?deviceId=<id>
- * Ở đây ta tạm giả sử client đã kết nối với URL: ws://localhost:4000?deviceId=123
- * => req.url = "/?deviceId=123"
- */
 wss.on('connection', (ws, req) => {
-    // Lấy deviceId từ query URL, ví dụ: ws://server:4000?deviceId=123
+    // Lấy deviceId từ query URL
     const queryParams = req.url.split('?')[1];  // "deviceId=123"
-    // Hoặc dùng URLSearchParams an toàn hơn:
-    // const urlParams = new URLSearchParams(queryParams);
-    // const deviceId = urlParams.get('deviceId');
-
     const deviceId = queryParams.split('=')[1];
     clients[deviceId] = ws;
 
@@ -37,22 +37,20 @@ wss.on('connection', (ws, req) => {
             const dataFromDevice = JSON.parse(message);
             console.log(`Message from Device ${deviceId}:`, dataFromDevice);
 
-            // Tìm thiết bị trong DB để biết có tồn tại không
+            // Tìm thiết bị trong DB
             const device = await devices.findOne({ where: { DeviceID: deviceId } });
             if (!device) {
                 console.log(`Device ${deviceId} không tồn tại trong DB. Bỏ qua ghi log.`);
                 return;
             }
 
-            // Kiểm tra "type" để biết đây là data của máy báo khói/sensor hay thiết bị khác
+            // Kiểm tra "type"
             if (dataFromDevice.type === 'smokeSensor' || dataFromDevice.type === 'sensorData') {
-                // 1) Gọi hàm xử lý riêng cho máy báo khói/sensor (nếu bạn tách logic)
-                //    Bên trong handleSmokeSensorData có thể tự ghi logs,
-                //    hoặc bạn có thể ghi logs tại đây tùy ý.
+                // Nếu bạn tách logic xử lý:
                 if (handleSmokeSensorData) {
                     await handleSmokeSensorData(deviceId, dataFromDevice);
                 } else {
-                    // Nếu bạn không tách hàm, ghi log trực tiếp tại đây
+                    // Ghi log cơ bản
                     await logs.create({
                         DeviceID: device.DeviceID,
                         UserID: device.UserID || null,
@@ -63,9 +61,55 @@ wss.on('connection', (ws, req) => {
                     });
                     console.log(`(Sensor) Log cho Device ${deviceId} đã được ghi vào DB.`);
                 }
+
+                /**
+                 * ======= BỔ SUNG PHẦN KIỂM TRA KHẨN CẤP & TẠO ALERT =======
+                 * Ví dụ: gas > 300 và/hoặc temperature > 50 => tạo alert
+                 */
+                const gasValue = dataFromDevice.gas;
+                const tempValue = dataFromDevice.temperature;
+
+                // Cờ đánh dấu có tạo alert hay không
+                let alertCreated = false;
+
+                // 1) Kiểm tra gas
+                if (typeof gasValue === 'number' && gasValue > 300) {
+                    await alerts.create({
+                        DeviceID: device.DeviceID,
+                        SpaceID: device.SpaceID || null,
+                        TypeID: device.TypeID || null, // nếu device có cột TypeID
+                        AlertTypeID: ALERT_TYPES.GAS_HIGH,
+                        Message: `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`,
+                        // Timestamp mặc định = now (theo model)
+                        Status: false // false = chưa xử lý
+                    });
+                    console.log(`*** ALERT: GAS HIGH cho Device ${device.DeviceID}, giá trị gas = ${gasValue}`);
+                    alertCreated = true;
+                }
+
+                // 2) Kiểm tra nhiệt độ
+                if (typeof tempValue === 'number' && tempValue > 50) {
+                    await alerts.create({
+                        DeviceID: device.DeviceID,
+                        SpaceID: device.SpaceID || null,
+                        TypeID: device.TypeID || null,
+                        AlertTypeID: ALERT_TYPES.TEMP_HIGH,
+                        Message: `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`,
+                        Status: false
+                    });
+                    console.log(`*** ALERT: TEMP HIGH cho Device ${device.DeviceID}, nhiệt độ = ${tempValue}°C`);
+                    alertCreated = true;
+                }
+
+                // Nếu muốn, bạn có thể gửi WebSocket lại cho front-end thông báo
+                if (alertCreated) {
+                    // Ví dụ: Thông báo cục bộ
+                    // (Nếu bạn có front-end cũng kết nối WS, cần tách logic server <-> device, server <-> frontend)
+                    console.log(`=> Đã tạo Alert cho thiết bị ID=${device.DeviceID}`);
+                }
+
             } else {
-                // 2) Trường hợp khác (ví dụ: LED, ack, các loại action khác)
-                //    Bạn vẫn muốn ghi log? Tuỳ logic
+                // Trường hợp khác
                 await logs.create({
                     DeviceID: device.DeviceID,
                     UserID: device.UserID || null,
@@ -90,27 +134,21 @@ wss.on('connection', (ws, req) => {
 
 /**
  * Hàm gửi lệnh tới thiết bị qua WebSocket.
- * @param {number} deviceId - Mã thiết bị
- * @param {object} command - Nội dung lệnh gửi (ví dụ { action: 'toggle', powerStatus: true })
- * @param {number} [initiatorUserId] - (tuỳ chọn) ID user đã ra lệnh (nếu cần ghi log chính xác hơn)
+ * [Không chỉnh sửa logic hàm này, chỉ giữ nguyên theo yêu cầu]
  */
 async function sendToDevice(deviceId, command, initiatorUserId = null) {
     if (clients[deviceId]) {
-        // Gửi command qua WebSocket
         clients[deviceId].send(JSON.stringify(command));
         console.log(`Command sent to Device ${deviceId}:`, command);
 
         try {
-            // Ghi log cho lệnh này
             const device = await devices.findOne({ where: { DeviceID: deviceId } });
             if (device) {
                 await logs.create({
                     DeviceID: device.DeviceID,
-                    // Nếu có user ra lệnh, bạn ghi user đó vào, không thì ghi user chủ device
                     UserID: initiatorUserId || device.UserID || null,
                     SpaceID: device.SpaceID || null,
                     Action: { fromServer: true, command },
-                    // có thể bọc command trong Action hoặc trong Details
                     Timestamp: new Date()
                 });
                 console.log(`Log command từ Server tới Device ${deviceId} đã được ghi.`);
@@ -123,7 +161,6 @@ async function sendToDevice(deviceId, command, initiatorUserId = null) {
     }
 }
 
-// Export cả wss và hàm sendToDevice
 module.exports = {
     wss,
     sendToDevice
