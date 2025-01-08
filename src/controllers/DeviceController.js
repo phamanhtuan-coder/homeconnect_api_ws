@@ -96,10 +96,7 @@ exports.toggleDevice = async (req, res) => {
         await device.update({ PowerStatus: powerStatus });
 
         // Gửi lệnh qua WebSocket
-        wsServer.sendToDevice(id, {
-            action: 'toggle',
-            powerStatus
-        });
+        await wsServer.sendToDevice(id, { action: 'toggle', powerStatus }, userId);
 
         return res.status(200).json({
             message: `Thiết bị đã được ${powerStatus ? 'bật' : 'tắt'}`,
@@ -174,11 +171,11 @@ exports.updateDeviceAttributes = async (req, res) => {
         await device.update({ Attribute: currentAttributes });
 
         // Gửi lệnh qua WebSocket
-        wsServer.sendToDevice(device.DeviceID, {
+        await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
             brightness,
             color
-        });
+        }, userId);
 
         return res.status(200).json({
             message: 'Cập nhật thuộc tính thiết bị thành công',
