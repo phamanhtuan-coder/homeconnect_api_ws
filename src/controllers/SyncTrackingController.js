@@ -1,139 +1,183 @@
-const { synctracking, devices } = require('../models');
+// syncTrackingController.js
+const { synctracking} = require('../models');
 
 /**
- * Tạo hoặc cập nhật thông tin đồng bộ (Create or Update Sync)
+ * [GET] Lấy tất cả bản ghi SyncTracking
  */
-exports.createOrUpdateSync = async (req, res) => {
+exports.getAllSyncTracking = async (req, res, next) => {
     try {
+        const data = await synctracking.findAll();
+        return res.status(200).json(data);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [GET] Lấy danh sách SyncTracking theo UserID
+ *  - Giả sử ta lấy userId từ token auth => req.user.id
+ *  - Hoặc bạn có thể lấy từ params (req.params.userId), tuỳ logic dự án.
+ */
+exports.getSyncTrackingByUserId = async (req, res, next) => {
+    try {
+        // Nếu bạn muốn lấy từ middleware auth, giả sử:
         const userId = req.user.id;
-        const { DeviceID, DeviceName, IPAddress, SyncStatus } = req.body;
 
-        // Kiểm tra thiết bị có tồn tại và thuộc người dùng không
-        const device = await devices.findOne({
-            where: { DeviceID, UserID: userId }
-        });
+        // Nếu bạn muốn lấy từ params thì:
+        // const { userId } = req.params;
 
-        if (!device) {
-            return res.status(404).json({ error: 'Device not found or access denied' });
+        const data = await synctracking.findAll({ where: { UserID: userId } });
+        return res.status(200).json(data);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [GET] Lấy một bản ghi SyncTracking theo SyncID
+ */
+exports.getSyncTrackingById = async (req, res, next) => {
+    try {
+        const { id } = req.params;
+        const syncItem = await synctracking.findOne({ where: { SyncID: id } });
+
+        if (!syncItem) {
+            return res.status(404).json({ message: 'Không tìm thấy bản ghi.' });
         }
 
-        // Tìm kiếm bản ghi sync hoặc tạo mới nếu không tồn tại
-        const [sync, created] = await synctracking.findOrCreate({
-            where: { DeviceID },
-            defaults: {
-                UserID: userId,
-                DeviceName,
-                IPAddress,
-                SyncStatus,
-                LastSyncedAt: new Date()
-            }
+        return res.status(200).json(syncItem);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [POST] Tạo mới một bản ghi SyncTracking
+ */
+exports.createSyncTracking = async (req, res, next) => {
+    try {
+        // Giả sử userId lấy từ auth middleware
+        const userId = req.user.id;
+
+        const {
+            DeviceID,
+            IpAddress,
+            DeviceName,
+            SyncStatus
+        } = req.body;
+
+        const newSyncTracking = await synctracking.create({
+            UserID: userId,
+            DeviceID,
+            IpAddress,
+            DeviceName,
+            SyncStatus
         });
 
-        if (!created) {
-            // Nếu tồn tại thì cập nhật thông tin
-            await sync.update({
-                DeviceName,
-                IPAddress,
-                SyncStatus,
-                LastSyncedAt: new Date()
+        return res.status(201).json(newSyncTracking);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [PUT] Cập nhật thông tin bản ghi SyncTracking
+ */
+exports.updateSyncTracking = async (req, res, next) => {
+    try {
+        const { id } = req.params; // SyncID
+        const {
+            DeviceID,
+            IpAddress,
+            DeviceName,
+            SyncStatus
+        } = req.body;
+
+        const syncItem = await synctracking.findOne({ where: { SyncID: id } });
+
+        if (!syncItem) {
+            return res.status(404).json({ message: 'Không tìm thấy bản ghi để cập nhật.' });
+        }
+
+        // Cập nhật các trường (nếu có truyền lên)
+        if (typeof DeviceID !== 'undefined') {
+            syncItem.DeviceID = DeviceID;
+        }
+        if (typeof IpAddress !== 'undefined') {
+            syncItem.IpAddress = IpAddress;
+        }
+        if (typeof DeviceName !== 'undefined') {
+            syncItem.DeviceName = DeviceName;
+        }
+        if (typeof SyncStatus !== 'undefined') {
+            syncItem.SyncStatus = SyncStatus;
+        }
+
+        await syncItem.save();
+
+        return res.status(200).json(syncItem);
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [DELETE] Xoá một bản ghi SyncTracking
+ */
+exports.deleteSyncTracking = async (req, res, next) => {
+    try {
+        const { id } = req.params; // SyncID
+        const syncItem = await synctracking.findOne({ where: { SyncID: id } });
+
+        if (!syncItem) {
+            return res.status(404).json({ message: 'Không tìm thấy bản ghi để xoá.' });
+        }
+
+        await syncItem.destroy();
+
+        return res.status(200).json({ message: 'Xoá bản ghi thành công.' });
+    } catch (error) {
+        return next(error);
+    }
+};
+
+/**
+ * [POST] Kiểm tra tình trạng sync giữa thiết bị (mobile) và CSDL
+ *  - Điện thoại sẽ gửi { deviceId, localUpdatedAt } (định dạng ISOString)
+ *  - Ta so sánh với trường updatedAt trên server.
+ *  - Nếu trùng nhau => syncStatus = true, ngược lại => false.
+ */
+exports.checkSyncStatus = async (req, res, next) => {
+    try {
+        const { deviceId, localUpdatedAt } = req.body;
+
+        // Tìm SyncTracking cho deviceId tương ứng (hoặc kèm UserID nếu cần)
+        const syncItem = await synctracking.findOne({
+            where: { DeviceID: deviceId /*, UserID: req.user.id (nếu cần)*/ },
+        });
+
+        if (!syncItem) {
+            return res.status(404).json({
+                message: 'Không tìm thấy bản ghi tương ứng với thiết bị này.',
             });
         }
 
-        res.status(200).json({ message: 'Sync data updated', sync });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
+        // updatedAt từ DB (Kiểu Date)
+        const serverUpdatedAt = new Date(syncItem.updatedAt).getTime();
 
-/**
- * Lấy danh sách trạng thái đồng bộ của người dùng (Get User Sync List)
- */
-exports.getUserSyncList = async (req, res) => {
-    try {
-        const userId = req.user.id;
+        // updatedAt local do mobile gửi lên (Kiểu chuỗi ISOString => convert sang number)
+        const localUpdatedAtTime = new Date(localUpdatedAt).getTime();
 
-        const syncList = await synctracking.findAll({
-            where: { UserID: userId },
-            include: { model: devices, as: 'Device' }
+        // So sánh
+        const isSynced = serverUpdatedAt === localUpdatedAtTime;
+
+        // Tuỳ ý, ta có thể cập nhật trường SyncStatus trong DB hoặc chỉ trả về kết quả
+        // Ở đây, chỉ trả về kết quả cho client
+        return res.status(200).json({
+            syncStatus: isSynced, // true/false
+            serverUpdatedAt: syncItem.updatedAt, // để client có thể đồng bộ nếu chưa khớp
         });
-
-        res.status(200).json(syncList);
     } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * Lấy trạng thái đồng bộ cụ thể theo DeviceID (Get Sync by Device)
- */
-exports.getSyncByDevice = async (req, res) => {
-    try {
-        const { deviceId } = req.params;
-        const userId = req.user.id;
-
-        const sync = await synctracking.findOne({
-            where: { DeviceID: deviceId, UserID: userId },
-            include: { model: devices, as: 'Device' }
-        });
-
-        if (!sync) {
-            return res.status(404).json({ error: 'No sync data found for this device' });
-        }
-
-        res.status(200).json(sync);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * Cập nhật địa chỉ IP hoặc trạng thái đồng bộ của thiết bị
- */
-exports.updateSyncStatus = async (req, res) => {
-    try {
-        const { deviceId } = req.params;
-        const userId = req.user.id;
-        const { IPAddress, SyncStatus } = req.body;
-
-        const sync = await synctracking.findOne({
-            where: { DeviceID: deviceId, UserID: userId }
-        });
-
-        if (!sync) {
-            return res.status(404).json({ error: 'Sync record not found' });
-        }
-
-        await sync.update({
-            IPAddress,
-            SyncStatus,
-            LastSyncedAt: new Date()
-        });
-
-        res.status(200).json({ message: 'Sync record updated successfully', sync });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-/**
- * Xóa bản ghi đồng bộ của thiết bị
- */
-exports.deleteSyncRecord = async (req, res) => {
-    try {
-        const { deviceId } = req.params;
-        const userId = req.user.id;
-
-        const sync = await synctracking.findOne({
-            where: { DeviceID: deviceId, UserID: userId }
-        });
-
-        if (!sync) {
-            return res.status(404).json({ error: 'Sync record not found' });
-        }
-
-        await sync.destroy();
-        res.status(200).json({ message: 'Sync record deleted successfully' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
+        return next(error);
     }
 };

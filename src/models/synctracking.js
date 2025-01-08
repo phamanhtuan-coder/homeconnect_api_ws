@@ -1,7 +1,7 @@
 const Sequelize = require('sequelize');
 
 module.exports = function (sequelize, DataTypes) {
-  const SyncTracking = sequelize.define('synctracking', {
+  return sequelize.define('synctracking', {
     SyncID: {
       autoIncrement: true,
       type: DataTypes.INTEGER,
@@ -14,6 +14,10 @@ module.exports = function (sequelize, DataTypes) {
     },
     DeviceID: {
       type: DataTypes.INTEGER,
+      allowNull: true
+    },
+    IpAddress:{
+      type: DataTypes.STRING,
       allowNull: true
     },
     DeviceName: {
@@ -31,12 +35,6 @@ module.exports = function (sequelize, DataTypes) {
     timestamps: true
   });
 
-  SyncTracking.associate = function (models) {
-    SyncTracking.belongsTo(models.devices, {
-      foreignKey: 'DeviceID',
-      as: 'Device'
-    });
-  };
 
-  return SyncTracking;
+
 };
