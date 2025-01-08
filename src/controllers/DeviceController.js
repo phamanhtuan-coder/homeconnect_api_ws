@@ -1,4 +1,4 @@
-const { devices, devicetypes, spaces, houses } = require('../models');
+const { devices, devicetypes, spaces, houses, sharedpermissions  } = require('../models');
 const wsServer = require('../ws/wsServer');
 
 /**
@@ -60,12 +60,39 @@ exports.toggleDevice = async (req, res) => {
         const { powerStatus } = req.body;
         const userId = req.user.id;
 
-        const device = await devices.findOne({ where: { DeviceID: id, UserID: userId } });
+        // Tìm thiết bị theo DeviceID và userId
+        // (Chưa kết luận là userId có quyền hay không, vì có thể userId không phải chủ)
+        const device = await devices.findOne({ where: { DeviceID: id } });
+
         if (!device) {
-            return res.status(404).json({ error: 'Device not found or access denied' });
+            return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
-        // Cập nhật trạng thái nguồn
+        // 1. Kiểm tra nếu user là chủ của thiết bị
+        let hasPermission = device.UserID === userId;
+
+        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
+        if (!hasPermission) {
+            const permissionRecord = await sharedpermissions.findOne({
+                where: {
+                    DeviceID: id,
+                    SharedWithUserID: userId
+                }
+            });
+            // Nếu tìm thấy -> user có quyền do được chia sẻ
+            if (permissionRecord) {
+                hasPermission = true;
+            }
+        }
+
+        // Nếu user không có quyền => báo lỗi
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
+        }
+
+        // ----- OK, người dùng có quyền. Cập nhật trạng thái nguồn ----- //
+
+        // Cập nhật PowerStatus trong DB
         await device.update({ PowerStatus: powerStatus });
 
         // Gửi lệnh qua WebSocket
@@ -74,14 +101,15 @@ exports.toggleDevice = async (req, res) => {
             powerStatus
         });
 
-        res.status(200).json({
-            message: `Device ${powerStatus ? 'ON' : 'OFF'}`,
+        return res.status(200).json({
+            message: `Thiết bị đã được ${powerStatus ? 'bật' : 'tắt'}`,
             device
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Điều chỉnh độ sáng và màu sắc (Update Brightness and Color)
@@ -92,8 +120,9 @@ exports.updateDeviceAttributes = async (req, res) => {
         const { brightness, color } = req.body;
         const userId = req.user.id;
 
+        // Tìm thiết bị (kèm DeviceType để biết nó hỗ trợ attribute nào)
         const device = await devices.findOne({
-            where: { DeviceID: id, UserID: userId },
+            where: { DeviceID: id },
             include: {
                 model: devicetypes,
                 as: 'DeviceType'
@@ -101,20 +130,48 @@ exports.updateDeviceAttributes = async (req, res) => {
         });
 
         if (!device) {
-            return res.status(404).json({ error: 'Device not found or access denied' });
+            return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
+        // 1. Kiểm tra nếu user là chủ thiết bị
+        let hasPermission = device.UserID === userId;
+
+        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
+        if (!hasPermission) {
+            const permissionRecord = await sharedpermissions.findOne({
+                where: {
+                    DeviceID: id,
+                    SharedWithUserID: userId
+                }
+            });
+            if (permissionRecord) {
+                hasPermission = true;
+            }
+        }
+
+        // Nếu user không có quyền => báo lỗi
+        if (!hasPermission) {
+            return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
+        }
+
+        // ------ OK, người dùng có quyền. Bắt đầu xử lý update attribute ------ //
+
+        // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
         const supportedAttributes = device.DeviceType.Attributes;
+        // => ví dụ: { brightness: true, color: true, ... }
 
-        if (supportedAttributes.brightness) {
-            device.Attribute.brightness = brightness;
+        // device.Attribute là JSON/Obj => ta đọc, cập nhật, rồi lưu
+        const currentAttributes = device.Attribute; // Giả sử device.Attribute kiểu object
+
+        if (supportedAttributes.brightness && typeof brightness !== 'undefined') {
+            currentAttributes.brightness = brightness;
         }
-        if (supportedAttributes.color) {
-            device.Attribute.color = color;
+        if (supportedAttributes.color && typeof color !== 'undefined') {
+            currentAttributes.color = color;
         }
 
-        // Cập nhật thiết bị
-        await device.update({ Attribute: device.Attribute });
+        // Cập nhật thiết bị trong DB
+        await device.update({ Attribute: currentAttributes });
 
         // Gửi lệnh qua WebSocket
         wsServer.sendToDevice(device.DeviceID, {
@@ -123,14 +180,15 @@ exports.updateDeviceAttributes = async (req, res) => {
             color
         });
 
-        res.status(200).json({
-            message: 'Device attributes updated successfully',
+        return res.status(200).json({
+            message: 'Cập nhật thuộc tính thiết bị thành công',
             device
         });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Lấy tất cả thiết bị của người dùng hiện tại
