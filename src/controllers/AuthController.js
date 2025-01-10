@@ -149,22 +149,38 @@ exports.login = async (req, res) => {
     }
 };
 
-// Lấy thông tin người dùng hiện tại (Dựa vào token)
+/**
+ * Lấy thông tin người dùng hiện tại dựa vào token
+ * @param {Object} req - Request object từ Express
+ * @param {Object} res - Response object từ Express
+ */
 exports.getCurrentUser = async (req, res) => {
     try {
-        const user = await users.findByPk(req.user.id, {
-            attributes: { exclude: ['PasswordHash'] }
+        // Lấy UserID từ req.user (được gán khi xác thực token)
+        const userId = req.user.id;
+
+        // Tìm người dùng theo UserID, loại trừ các trường nhạy cảm
+        const user = await Users.findByPk(userId, {
+            attributes: { exclude: ['PasswordHash', 'VerificationCode', 'VerificationExpiry'] }
         });
 
+        // Kiểm tra nếu người dùng không tồn tại
         if (!user) {
-            return res.status(404).json({ error: 'User not found' });
+            return res.status(404).json({ error: 'Không tìm thấy người dùng.' });
         }
 
-        res.status(200).json(user);
+        // Chuyển đổi đối tượng Sequelize sang đối tượng plain JavaScript
+        const userData = user.get({ plain: true });
+
+
+        // Trả về dữ liệu người dùng
+        return res.status(200).json(userData);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Lỗi khi lấy thông tin người dùng hiện tại:', error);
+        return res.status(500).json({ error: 'Lỗi hệ thống.' });
     }
 };
+
 
 // Đăng xuất người dùng (client sẽ tự xóa token)
 exports.logout = (req, res) => {
