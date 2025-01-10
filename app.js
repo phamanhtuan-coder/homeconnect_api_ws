@@ -15,6 +15,7 @@ const LogRouter = require('./src/routes/LogRouter');
 const AuthRouter = require('./src/routes/AuthRouter');
 const SyncTrackingRouter = require('./src/routes/SyncTrackingRouter');
 const DashboardRouter = require('./src/routes/DashboardRouter');
+const OtpRouter = require('./src/routes/OtpRouter');
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/api/logs', LogRouter);
 app.use('/api/auth', AuthRouter);
 app.use('/api/sync', SyncTrackingRouter);
 app.use('/api/dashboard', DashboardRouter);
+app.use('/api/otp',OtpRouter)
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
