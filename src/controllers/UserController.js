@@ -10,7 +10,7 @@ const bcrypt = require('bcrypt');
 exports.getAllUsers = async (req, res) => {
     try {
         const userList = await users.findAll({
-            attributes: { exclude: ['PasswordHash'] }
+            attributes: { exclude: ['PasswordHash','VerificationCode','VerificationExpiry'] }
         });
         res.status(200).json(userList);
     } catch (error) {

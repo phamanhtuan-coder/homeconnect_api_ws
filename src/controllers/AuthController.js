@@ -6,31 +6,118 @@ require('dotenv').config();
 // Đăng ký người dùng mới
 exports.register = async (req, res) => {
     try {
-        const { Name, Email, PasswordHash, Phone, Address } = req.body;
+        // Trích xuất các trường từ body của request
+        const { Name, Email, PasswordHash, Phone, Address, DateOfBirth, ProfileImage } = req.body;
 
-        // Kiểm tra Email đã tồn tại chưa
-        const existingUser = await users.findOne({ where: { Email } });
-        if (existingUser) {
-            return res.status(400).json({ error: 'Email already exists' });
+        // =========================
+        // 1. Kiểm Tra Dữ Liệu Đầu Vào
+        // =========================
+
+        // Kiểm tra các trường bắt buộc
+        if (!Name || !Email || !PasswordHash) {
+            return res.status(400).json({ error: 'Tên, Email và Mật khẩu là bắt buộc.' });
         }
 
-        // Hash mật khẩu
+        // Kiểm tra định dạng Email bằng regex đơn giản
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(Email)) {
+            return res.status(400).json({ error: 'Định dạng Email không hợp lệ.' });
+        }
+
+        // Kiểm tra độ dài mật khẩu (ví dụ: ít nhất 6 ký tự)
+        if (PasswordHash.length < 6) {
+            return res.status(400).json({ error: 'Mật khẩu phải ít nhất 6 ký tự.' });
+        }
+
+        // Tùy chọn: Kiểm tra định dạng số điện thoại (ví dụ đơn giản)
+        if (Phone && !/^\d{10,15}$/.test(Phone)) {
+            return res.status(400).json({ error: 'Định dạng số điện thoại không hợp lệ.' });
+        }
+
+        // Tùy chọn: Kiểm tra định dạng DateOfBirth (YYYY-MM-DD)
+        if (DateOfBirth) {
+            const birthDateRegex = /^\d{4}-\d{2}-\d{2}$/;
+            if (!birthDateRegex.test(DateOfBirth)) {
+                return res.status(400).json({ error: 'DateOfBirth phải có định dạng YYYY-MM-DD.' });
+            }
+
+            const date = new Date(DateOfBirth);
+            if (isNaN(date.getTime())) {
+                return res.status(400).json({ error: 'DateOfBirth không hợp lệ.' });
+            }
+        }
+
+        // =========================
+        // 2. Kiểm Tra Email Đã Tồn Tại
+        // =========================
+
+        const existingUser = await users.findOne({ where: { Email } });
+        if (existingUser) {
+            return res.status(400).json({ error: 'Email đã tồn tại.' });
+        }
+
+        // =========================
+        // 3. Băm Mật Khẩu
+        // =========================
+
         const hashedPassword = await bcrypt.hash(PasswordHash, 10);
 
-        // Tạo người dùng mới
-        const user = await users.create({
+        // =========================
+        // 4. Chuẩn Bị Dữ Liệu Người Dùng Mới
+        // =========================
+
+        const newUserData = {
             Name,
             Email,
             PasswordHash: hashedPassword,
             Phone,
-            Address
-        });
+            Address,
+        };
 
-        res.status(201).json({ message: 'User registered successfully', user });
+        // Thêm DateOfBirth nếu có
+        if (DateOfBirth) {
+            newUserData.DateOfBirth = DateOfBirth; // Đảm bảo định dạng 'YYYY-MM-DD'
+        }
+
+        // Thêm ProfileImage nếu có
+        if (ProfileImage) {
+            try {
+                // Giả sử ProfileImage là chuỗi base64
+                // Loại bỏ phần prefix data URL nếu có
+                const base64Data = ProfileImage.replace(/^data:image\/\w+;base64,/, "");
+                // Tùy chọn: Kiểm tra kích thước của buffer hình ảnh
+                // (Vì client đã xử lý giới hạn kích thước, phần này là tùy chọn)
+                // const maxSize = 5 * 1024 * 1024; // 5MB
+                // if (buffer.length > maxSize) {
+                //     return res.status(400).json({ error: 'Hình ảnh hồ sơ quá lớn.' });
+                // }
+
+                newUserData.ProfileImage = Buffer.from(base64Data, 'base64');
+            } catch (imageError) {
+                return res.status(400).json({ error: 'Định dạng ProfileImage không hợp lệ.' });
+            }
+        }
+
+        // =========================
+        // 5. Tạo Người Dùng Mới
+        // =========================
+
+        const user = await users.create(newUserData);
+
+        // =========================
+        // 6. Chuẩn Bị Phản Hồi
+        // =========================
+
+        // Loại bỏ các trường nhạy cảm khỏi phản hồi
+        const { PasswordHash: _, ProfileImage: __, ...userWithoutSensitive } = user.get({ plain: true });
+
+        res.status(201).json({ message: 'Đăng ký người dùng thành công.', user: userWithoutSensitive });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        console.error('Lỗi khi đăng ký người dùng:', error);
+        res.status(500).json({ error: 'Lỗi hệ thống.' });
     }
 };
+
 
 // Đăng nhập và tạo token
 exports.login = async (req, res) => {

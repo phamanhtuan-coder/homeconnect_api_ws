@@ -35,7 +35,7 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: false
       },
       ProfileImage: {
-        type: DataTypes.BLOB('long'),
+        type: DataTypes.TEXT,
         allowNull: true
       },
       Phone: {
@@ -47,7 +47,7 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: true
       },
       DateOfBirth: {
-        type: DataTypes.DATE,
+        type: DataTypes.DATEONLY,
         allowNull: true
       },
       createdAt: {
