@@ -11,7 +11,7 @@ exports.createDevice = async (req, res) => {
 
         const deviceType = await devicetypes.findByPk(TypeID);
         if (!deviceType) {
-            return res.status(404).json({ error: 'Device type not found' });
+            return res.status(404).json({ error: 'Thiết bị không được tìm thấy' });
         }
 
         const device = await devices.create({
@@ -41,7 +41,7 @@ exports.linkDevice = async (req, res) => {
 
         const device = await devices.findByPk(deviceId);
         if (!device) {
-            return res.status(404).json({ error: 'Device not found' });
+            return res.status(404).json({ error: 'Thiết bị không được tìm thấy' });
         }
 
         await device.update({ UserID: userId });
@@ -226,7 +226,7 @@ exports.getDeviceById = async (req, res) => {
         });
 
         if (!device) {
-            return res.status(404).json({ error: 'Device not found or access denied' });
+            return res.status(404).json({ error: 'Thiết bị không được tìm thấy hoặc không có quyền truy cập' });
         }
 
         res.status(200).json(device);
@@ -250,12 +250,12 @@ exports.unlinkDevice = async (req, res) => {
         });
 
         if (!device) {
-            return res.status(404).json({ error: 'Device not found or access denied' });
+            return res.status(404).json({ error: 'Thiết bị không được tìm thấy hoặc không có quyền truy cập' });
         }
 
         // Cập nhật UserID về null (gỡ liên kết)
         await device.update({ UserID: null });
-        res.status(200).json({ message: 'Device unlinked successfully' });
+        res.status(200).json({ message: 'Gỡ liên kết thiết bị thành công' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

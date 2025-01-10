@@ -28,25 +28,24 @@ wss.on('connection', (ws, req) => {
     const deviceId = queryParams.split('=')[1];
     clients[deviceId] = ws;
 
-    console.log(`Device ${deviceId} connected via WebSocket`);
+    console.log(`Thiết bị ${deviceId} đã kết nối qua WebSocket`);
 
     // Khi thiết bị gửi message lên
     ws.on('message', async (message) => {
         try {
             // Parse JSON
             const dataFromDevice = JSON.parse(message);
-            console.log(`Message from Device ${deviceId}:`, dataFromDevice);
+            console.log(`Tin nhắn từ thiết bị ${deviceId}:`, dataFromDevice);
 
             // Tìm thiết bị trong DB
             const device = await devices.findOne({ where: { DeviceID: deviceId } });
             if (!device) {
-                console.log(`Device ${deviceId} không tồn tại trong DB. Bỏ qua ghi log.`);
+                console.log(`Thiết bị ${deviceId} không tồn tại trong DB. Bỏ qua ghi log.`);
                 return;
             }
 
             // Kiểm tra "type"
             if (dataFromDevice.type === 'smokeSensor' || dataFromDevice.type === 'sensorData') {
-                // Nếu bạn tách logic xử lý:
                 if (handleSmokeSensorData) {
                     await handleSmokeSensorData(deviceId, dataFromDevice);
                 } else {
@@ -59,7 +58,7 @@ wss.on('connection', (ws, req) => {
                         Details: dataFromDevice,
                         Timestamp: new Date()
                     });
-                    console.log(`(Sensor) Log cho Device ${deviceId} đã được ghi vào DB.`);
+                    console.log(`(Sensor) Log cho Thiết bị ${deviceId} đã được ghi vào DB.`);
                 }
 
                 /**
@@ -83,7 +82,7 @@ wss.on('connection', (ws, req) => {
                         // Timestamp mặc định = now (theo model)
                         Status: false // false = chưa xử lý
                     });
-                    console.log(`*** ALERT: GAS HIGH cho Device ${device.DeviceID}, giá trị gas = ${gasValue}`);
+                    console.log(`*** ALERT: KHÍ GAS CAO ở thiết bị ${device.DeviceID}, nồng độ khí gas = ${gasValue}`);
                     alertCreated = true;
                 }
 
@@ -97,7 +96,7 @@ wss.on('connection', (ws, req) => {
                         Message: `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`,
                         Status: false
                     });
-                    console.log(`*** ALERT: TEMP HIGH cho Device ${device.DeviceID}, nhiệt độ = ${tempValue}°C`);
+                    console.log(`*** ALERT: NHIỆT ĐỘ CAO ở thiết bị ${device.DeviceID}, nhiệt độ = ${tempValue}°C`);
                     alertCreated = true;
                 }
 
@@ -127,14 +126,17 @@ wss.on('connection', (ws, req) => {
 
     // Khi thiết bị đóng kết nối
     ws.on('close', () => {
-        console.log(`Device ${deviceId} disconnected`);
+        console.log(`Thiết bị ${deviceId} ngắt kết nối`);
         delete clients[deviceId];
     });
 });
 
 /**
  * Hàm gửi lệnh tới thiết bị qua WebSocket.
- * [Không chỉnh sửa logic hàm này, chỉ giữ nguyên theo yêu cầu]
+ * @param {string | number} deviceId - Mã thiết bị (chuỗi hoặc số)
+ * @param {object} command - lệnh cần thực hiện
+ * @param {string | number} initiatorUserId - Mã người dùng thực hiện lệnh
+ *
  */
 async function sendToDevice(deviceId, command, initiatorUserId = null) {
     if (clients[deviceId]) {
@@ -151,13 +153,13 @@ async function sendToDevice(deviceId, command, initiatorUserId = null) {
                     Action: { fromServer: true, command },
                     Timestamp: new Date()
                 });
-                console.log(`Log command từ Server tới Device ${deviceId} đã được ghi.`);
+                console.log(`Yêu cầu log từ Server tới thiết bị ${deviceId} đã được ghi.`);
             }
         } catch (error) {
             console.error(`Lỗi ghi log khi gửi lệnh tới Device ${deviceId}:`, error.message);
         }
     } else {
-        console.log(`Device ${deviceId} hiện không kết nối WebSocket.`);
+        console.log(`Thiết bị ${deviceId} hiện không kết nối WebSocket.`);
     }
 }
 
