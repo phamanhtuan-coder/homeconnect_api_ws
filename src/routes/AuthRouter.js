@@ -3,7 +3,8 @@ const {
     register,
     login,
     getCurrentUser,
-    logout
+    logout,
+    checkAndUpdateDeviceToken
 } = require('../controllers/AuthController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
@@ -20,5 +21,8 @@ router.get('/me', authenticate, getCurrentUser);
 
 // Đăng xuất
 router.post('/logout', authenticate, logout);
+
+// Cập nhật DeviceToken
+router.post( '/update-device-token',authenticate, checkAndUpdateDeviceToken);
 
 module.exports = router;

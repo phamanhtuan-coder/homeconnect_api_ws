@@ -160,7 +160,7 @@ exports.getCurrentUser = async (req, res) => {
         const userId = req.user.id;
 
         // Tìm người dùng theo UserID, loại trừ các trường nhạy cảm
-        const user = await Users.findByPk(userId, {
+        const user = await users.findByPk(userId, {
             attributes: { exclude: ['PasswordHash', 'VerificationCode', 'VerificationExpiry'] }
         });
 
@@ -188,5 +188,43 @@ exports.logout = (req, res) => {
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+// Hàm cập nhật DeviceToken vào bảng users
+async function updateDeviceToken(id, deviceToken) {
+    try {
+        const user = await users.findOne({ where: { UserID: id } });
+
+        if (!user) {
+            return { success: false, message: 'Người dùng không tồn tại.' };
+        }
+
+        await user.update({ DeviceToken: deviceToken });
+
+        return { success: true, message: 'Cập nhật DeviceToken thành công.' };
+    } catch (error) {
+        console.error('Lỗi khi cập nhật DeviceToken:', error);
+        return { success: false, message: 'Lỗi khi cập nhật DeviceToken.' };
+    }
+}
+
+exports.checkAndUpdateDeviceToken = async (req, res) => {
+    const {deviceToken} = req.body;
+
+    const id = req.user.id;
+
+    if (!deviceToken) {
+        return res.status(400).json({
+            success: false,
+            message: 'DeviceToken không được để trống.'
+        });
+    }
+
+    try {
+        const result = await updateDeviceToken(id, deviceToken);
+        res.status(result.success ? 200 : 400).json(result);
+    } catch (error) {
+        res.status(500).json({success: false, message: 'Lỗi hệ thống.'});
     }
 };

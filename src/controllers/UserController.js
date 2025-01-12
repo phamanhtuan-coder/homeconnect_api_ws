@@ -24,7 +24,7 @@ exports.getAllUsers = async (req, res) => {
 exports.getUserById = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id, {
-            attributes: { exclude: ['PasswordHash'] }  // Không lấy hash mật khẩu
+            attributes: { exclude: ['PasswordHash', 'VerificationCode','VerificationExpiry'] }  // Không lấy hash mật khẩu
         });
 
         if (!user) {
@@ -128,7 +128,7 @@ exports.deleteUserById = async (req, res) => {
 exports.getUserSharedDevices = async (req, res) => {
     try {
         const user = await users.findByPk(req.params.id, {
-            attributes: { exclude: ['PasswordHash'] }  // Không lấy hash mật khẩu
+            attributes: { exclude: ['PasswordHash', 'VerificationCode','VerificationExpiry'] }  // Không lấy hash mật khẩu
         });
 
         if (!user) {
