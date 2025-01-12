@@ -1,26 +1,27 @@
 const Sequelize = require('sequelize');
 require('dotenv').config();
 
-const sequelize = new Sequelize(
-    process.env.DB_NAME,        // Database name
-    process.env.DB_USER,        // User
-    process.env.DB_PASSWORD,    // Password
-    {
-        host: '127.0.0.1',        // Force use of 127.0.0.1
-        port: 3306,               // Default MySQL port (XAMPP)
-        dialect: 'mysql',         // Use MySQL dialect
-        logging: false            // Disable SQL logging (optional)
-    }
-);
+let sequelize;
 
-// Test Database Connection
-sequelize.authenticate()
-    .then(() => {
-        console.log('Database connected...');
-    })
-    .catch((err) => {
-        console.error('Error: ', err);
+// Nếu NODE_ENV=production -> dùng JawsDB
+if (process.env.NODE_ENV === 'production') {
+    sequelize = new Sequelize(process.env.JAWSDB_MARIA_URL, {
+        dialect: 'mysql',
+        logging: false
     });
+} else {
+    // Ngược lại, dùng local
+    sequelize = new Sequelize(
+        process.env.DB_NAME,
+        process.env.DB_USER,
+        process.env.DB_PASSWORD,
+        {
+            host: process.env.DB_HOST,
+            port: process.env.DB_PORT,
+            dialect: 'mysql',
+            logging: false
+        }
+    );
+}
 
 module.exports = sequelize;
-
