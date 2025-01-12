@@ -1,12 +1,11 @@
 const WebSocket = require('ws');
+const admin = require('../services/FirebaseAdmin');
 
 // Import các model
-const { devices, logs, alerts } = require('../models');
+const { devices, logs, alerts, users } = require('../models');
 // Thêm 'alerts' để tạo cảnh báo
 const { handleSmokeSensorData } = require("../controllers/handleSmokeSensorData");
 
-// Tạo một "enum" (hoặc object) để quản lý AlertTypeID, Message
-// Bạn có thể tuỳ chỉnh ID & nội dung theo bảng alerttypes thực tế:
 const ALERT_TYPES = {
     GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
     TEMP_HIGH: 2,      // Giả sử AlertTypeID=2: cảnh báo nhiệt độ
@@ -73,37 +72,20 @@ wss.on('connection', (ws, req) => {
 
                 // 1) Kiểm tra gas
                 if (typeof gasValue === 'number' && gasValue > 300) {
-                    await alerts.create({
-                        DeviceID: device.DeviceID,
-                        SpaceID: device.SpaceID || null,
-                        TypeID: device.TypeID || null, // nếu device có cột TypeID
-                        AlertTypeID: ALERT_TYPES.GAS_HIGH,
-                        Message: `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`,
-                        // Timestamp mặc định = now (theo model)
-                        Status: false // false = chưa xử lý
-                    });
-                    console.log(`*** ALERT: KHÍ GAS CAO ở thiết bị ${device.DeviceID}, nồng độ khí gas = ${gasValue}`);
+                    const message = `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`;
+                    await createAlert(device, ALERT_TYPES.GAS_HIGH, message);
                     alertCreated = true;
                 }
 
                 // 2) Kiểm tra nhiệt độ
                 if (typeof tempValue === 'number' && tempValue > 50) {
-                    await alerts.create({
-                        DeviceID: device.DeviceID,
-                        SpaceID: device.SpaceID || null,
-                        TypeID: device.TypeID || null,
-                        AlertTypeID: ALERT_TYPES.TEMP_HIGH,
-                        Message: `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`,
-                        Status: false
-                    });
-                    console.log(`*** ALERT: NHIỆT ĐỘ CAO ở thiết bị ${device.DeviceID}, nhiệt độ = ${tempValue}°C`);
+                    const message = `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`;
+                    await createAlert(device, ALERT_TYPES.TEMP_HIGH, message);
                     alertCreated = true;
                 }
 
                 // Nếu muốn, bạn có thể gửi WebSocket lại cho front-end thông báo
                 if (alertCreated) {
-                    // Ví dụ: Thông báo cục bộ
-                    // (Nếu bạn có front-end cũng kết nối WS, cần tách logic server <-> device, server <-> frontend)
                     console.log(`=> Đã tạo Alert cho thiết bị ID=${device.DeviceID}`);
                 }
 
@@ -160,6 +142,51 @@ async function sendToDevice(deviceId, command, initiatorUserId = null) {
         }
     } else {
         console.log(`Thiết bị ${deviceId} hiện không kết nối WebSocket.`);
+    }
+}
+
+
+// Tạo Alert, tạo FCM
+async function createAlert(device, alertType, messageContent) {
+    try {
+        // Create the alert in the database
+        const alert = await alerts.create({
+            DeviceID: device.DeviceID,
+            SpaceID: device.SpaceID || null,
+            TypeID: device.TypeID || null,
+            AlertTypeID: alertType,
+            Message: messageContent,
+            Status: false
+        });
+        console.log(`*** ALERT: ${messageContent} ở thiết bị ${device.DeviceID}`);
+
+        // Retrieve the user associated with the device
+        const user = await users.findOne({ where: { UserID: device.UserID } });
+        if (user && user.DeviceToken) {
+            // Construct the notification payload as per the latest FCM API
+            const message = {
+                token: user.DeviceToken,
+                notification: {
+                    title: 'Cảnh báo từ thiết bị',
+                    body: messageContent,
+                },
+                data: {
+                    deviceId: device.DeviceID.toString(),
+                    alertType: alertType.toString(),
+                },
+            };
+
+            // Send the notification using the updated `send` method
+            const response = await admin.messaging().send(message);
+            console.log(`Đã gửi thông báo FCM đến UserID=${user.UserID}:`, response);
+        } else {
+            console.log(`UserID=${device.UserID} không có DeviceToken hoặc không tồn tại.`);
+        }
+
+        return alert;
+    } catch (error) {
+        console.error(`Lỗi khi tạo alert cho DeviceID=${device.DeviceID}:`, error);
+        throw error;
     }
 }
 

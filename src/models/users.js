@@ -51,7 +51,7 @@ module.exports = function (sequelize, DataTypes) {
         allowNull: true
       },
       DeviceToken: {
-        type: DataTypes.STRING(255),
+        type: DataTypes.TEXT,
         allowNull: true
       },
       createdAt: {
