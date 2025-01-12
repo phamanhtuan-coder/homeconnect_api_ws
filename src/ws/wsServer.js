@@ -12,8 +12,8 @@ const ALERT_TYPES = {
 };
 
 const ALERT_MESSAGES = {
-    GAS_HIGH: 'Nồng độ khí quá cao',
-    TEMP_HIGH: 'Nhiệt độ quá cao',
+    GAS_HIGH: 'KHẨN CẤP! Nồng độ khí quá cao!',
+    TEMP_HIGH: 'KHẨN CẤP! Nhiệt độ quá cao!',
 };
 
 const wss = new WebSocket.Server({ port: 4000 });
