@@ -25,7 +25,6 @@ async function sendOtpEmail(receiverEmail) {
 
         if (!user) {
             console.error(`Không tìm thấy người dùng với email: ${receiverEmail}`);
-            return;
         }
 
         // Cập nhật VerificationCode và VerificationExpiry vào bảng users
