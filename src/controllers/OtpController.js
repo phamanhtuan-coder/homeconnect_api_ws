@@ -128,9 +128,9 @@ exports.checkEmailExists = async (req, res) => {
         const user = await users .findOne({ where: { Email: email } });
 
         if (user) {
-            return res.status(200).json({ success: true, exists: true, message: 'Email tồn tại trong hệ thống.' });
+            return res.status(200).json({ exists: true, message: 'Email tồn tại trong hệ thống.' });
         } else {
-            return res.status(200).json({ success: true, exists: false, message: 'Email không tồn tại trong hệ thống.' });
+            return res.status(200).json({ exists: false, message: 'Email không tồn tại trong hệ thống.' });
         }
     } catch (error) {
         console.error('Lỗi kiểm tra email:', error);
