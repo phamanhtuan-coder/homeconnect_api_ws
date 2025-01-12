@@ -89,7 +89,7 @@ module.exports = function (sequelize, DataTypes) {
 
     Log.belongsTo(models.users, {
       foreignKey: 'UserID',
-      as: 'User',
+      as: 'user',
       onDelete: 'SET NULL',
       onUpdate: 'CASCADE'
     });

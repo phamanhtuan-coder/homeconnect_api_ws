@@ -82,17 +82,13 @@ exports.register = async (req, res) => {
         // Thêm ProfileImage nếu có
         if (ProfileImage) {
             try {
-                // Giả sử ProfileImage là chuỗi base64
-                // Loại bỏ phần prefix data URL nếu có
                 const base64Data = ProfileImage.replace(/^data:image\/\w+;base64,/, "");
-                // Tùy chọn: Kiểm tra kích thước của buffer hình ảnh
-                // (Vì client đã xử lý giới hạn kích thước, phần này là tùy chọn)
-                // const maxSize = 5 * 1024 * 1024; // 5MB
-                // if (buffer.length > maxSize) {
-                //     return res.status(400).json({ error: 'Hình ảnh hồ sơ quá lớn.' });
-                // }
-
-                newUserData.ProfileImage = Buffer.from(base64Data, 'base64');
+                // Đảm bảo rằng base64Data là một chuỗi hợp lệ
+                const buffer = Buffer.from(base64Data, 'base64');
+                if (buffer.toString('base64') !== base64Data) {
+                    return res.status(400).json({ error: 'Định dạng ProfileImage không hợp lệ.' });
+                }
+                newUserData.ProfileImage = base64Data; // Lưu trữ chuỗi base64 trực tiếp
             } catch (imageError) {
                 return res.status(400).json({ error: 'Định dạng ProfileImage không hợp lệ.' });
             }

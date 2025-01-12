@@ -8,7 +8,7 @@ const {
     updateSyncTracking,
     deleteSyncTracking,
     checkSyncStatus
-} = require('../controllers/syncTrackingController'); // Đường dẫn tùy cấu trúc dự án
+} = require('../controllers/SyncTrackingController'); // Đường dẫn tùy cấu trúc dự án
 const { authenticate } = require('../middlewares/authMiddleware');
 
 const router = express.Router();
