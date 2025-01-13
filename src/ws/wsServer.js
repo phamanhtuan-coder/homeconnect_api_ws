@@ -194,6 +194,6 @@ async function createAlert(device, alertType, messageContent) {
 }
 
 module.exports = {
-    wss,
+    initWebSocket,
     sendToDevice
 };
