@@ -191,8 +191,13 @@ exports.getAllAlertsByUser = async (req, res) => {
                     as: 'Device',
                     include: [
                         { model: devicetypes, as: 'DeviceType' },
-                        { model: spaces, as: 'Space' },
-                        { model: houses, as: 'House' }
+                        {
+                            model: spaces,
+                            as: 'Space',
+                            include: [
+                                { model: houses, as: 'House' }
+                            ]
+                        }
                     ]
                 }
             ],
