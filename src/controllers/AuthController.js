@@ -1,10 +1,11 @@
-const { users } = require('../models');
+const { users, houses, spaces, sequelize } = require('../models'); // Đảm bảo import đúng các mô hình và sequelize
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 // Đăng ký người dùng mới
 exports.register = async (req, res) => {
+    const transaction = await sequelize.transaction();
     try {
         // Trích xuất các trường từ body của request
         const { Name, Email, PasswordHash, Phone, Address, DateOfBirth, ProfileImage } = req.body;
@@ -15,22 +16,26 @@ exports.register = async (req, res) => {
 
         // Kiểm tra các trường bắt buộc
         if (!Name || !Email || !PasswordHash) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Tên, Email và Mật khẩu là bắt buộc.' });
         }
 
         // Kiểm tra định dạng Email bằng regex đơn giản
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(Email)) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Định dạng Email không hợp lệ.' });
         }
 
         // Kiểm tra độ dài mật khẩu (ví dụ: ít nhất 6 ký tự)
         if (PasswordHash.length < 6) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Mật khẩu phải ít nhất 6 ký tự.' });
         }
 
         // Tùy chọn: Kiểm tra định dạng số điện thoại (ví dụ đơn giản)
         if (Phone && !/^\d{10,15}$/.test(Phone)) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Định dạng số điện thoại không hợp lệ.' });
         }
 
@@ -38,11 +43,13 @@ exports.register = async (req, res) => {
         if (DateOfBirth) {
             const birthDateRegex = /^\d{4}-\d{2}-\d{2}$/;
             if (!birthDateRegex.test(DateOfBirth)) {
+                await transaction.rollback();
                 return res.status(400).json({ error: 'DateOfBirth phải có định dạng YYYY-MM-DD.' });
             }
 
             const date = new Date(DateOfBirth);
             if (isNaN(date.getTime())) {
+                await transaction.rollback();
                 return res.status(400).json({ error: 'DateOfBirth không hợp lệ.' });
             }
         }
@@ -51,8 +58,9 @@ exports.register = async (req, res) => {
         // 2. Kiểm Tra Email Đã Tồn Tại
         // =========================
 
-        const existingUser = await users.findOne({ where: { Email } });
+        const existingUser = await users.findOne({ where: { Email }, transaction });
         if (existingUser) {
+            await transaction.rollback();
             return res.status(400).json({ error: 'Email đã tồn tại.' });
         }
 
@@ -86,10 +94,12 @@ exports.register = async (req, res) => {
                 // Đảm bảo rằng base64Data là một chuỗi hợp lệ
                 const buffer = Buffer.from(base64Data, 'base64');
                 if (buffer.toString('base64') !== base64Data) {
+                    await transaction.rollback();
                     return res.status(400).json({ error: 'Định dạng ProfileImage không hợp lệ.' });
                 }
                 newUserData.ProfileImage = base64Data; // Lưu trữ chuỗi base64 trực tiếp
             } catch (imageError) {
+                await transaction.rollback();
                 return res.status(400).json({ error: 'Định dạng ProfileImage không hợp lệ.' });
             }
         }
@@ -98,17 +108,59 @@ exports.register = async (req, res) => {
         // 5. Tạo Người Dùng Mới
         // =========================
 
-        const user = await users.create(newUserData);
+        const user = await users.create(newUserData, { transaction });
 
         // =========================
-        // 6. Chuẩn Bị Phản Hồi
+        // 6. Tạo Nhà Mặc Định
+        // =========================
+
+        const defaultHouse = await houses.create({
+            UserID: user.id, // Giả sử trường khóa ngoại là 'UserID'
+            Name: 'Nhà Mặc Định',
+            Address: Address || 'Địa chỉ mặc định',
+            IconName: 'default-icon',
+            IconColor: '#000000'
+        }, { transaction });
+
+        // =========================
+        // 7. Tạo Phòng Mặc Định Trong Nhà
+        // =========================
+
+        const defaultSpace = await spaces.create({
+            HouseID: defaultHouse.id, // Giả sử trường khóa ngoại là 'HouseID'
+            Name: 'Phòng Mặc Định'
+        }, { transaction });
+
+        // =========================
+        // 8. Commit Transaction
+        // =========================
+
+        await transaction.commit();
+
+        // =========================
+        // 9. Chuẩn Bị Phản Hồi
         // =========================
 
         // Loại bỏ các trường nhạy cảm khỏi phản hồi
         const { PasswordHash: _, ProfileImage: __, ...userWithoutSensitive } = user.get({ plain: true });
 
-        res.status(201).json({ message: 'Đăng ký người dùng thành công.', user: userWithoutSensitive });
+        res.status(201).json({
+            message: 'Đăng ký người dùng thành công.',
+            user: userWithoutSensitive,
+            house: {
+                id: defaultHouse.id,
+                Name: defaultHouse.Name,
+                Address: defaultHouse.Address,
+                IconName: defaultHouse.IconName,
+                IconColor: defaultHouse.IconColor
+            },
+            space: {
+                id: defaultSpace.id,
+                Name: defaultSpace.Name
+            }
+        });
     } catch (error) {
+        await transaction.rollback();
         console.error('Lỗi khi đăng ký người dùng:', error);
         res.status(500).json({ error: 'Lỗi hệ thống.' });
     }
