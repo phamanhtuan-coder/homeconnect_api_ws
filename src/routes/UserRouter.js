@@ -6,6 +6,7 @@ const {
     deleteUserById,
     getUserSharedDevices,
     getSharedWithDevices,
+    getAllDevicesUserCanAccess,
     resetPassword,
     changePassword
 } = require('../controllers/UserController');
@@ -24,6 +25,9 @@ router.put('/:id', authenticate, updateUserById);
 
 // Xóa người dùng
 router.delete('/:id', authenticate, deleteUserById);
+
+// Lấy tất cả thiết bị mà người dùng có quyền truy cập (gồm sở hữu và được chia sẻ)
+router.get('/getAllUserDevices', authenticate, getAllDevicesUserCanAccess);
 
 // Lấy thiết bị mà người dùng đã chia sẻ
 router.get('/:id/shared', authenticate, getUserSharedDevices);
