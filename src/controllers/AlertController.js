@@ -201,7 +201,7 @@ exports.getAllAlertsByUser = async (req, res) => {
                     ]
                 }
             ],
-            order: [['createdAt', 'DESC']] // Sắp xếp alerts mới nhất trước
+            order: [['Timestamp', 'DESC']] // Sắp xếp alerts mới nhất trước
         });
 
         return res.status(200).json(alertsList);
