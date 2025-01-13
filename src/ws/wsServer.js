@@ -21,7 +21,9 @@ const wss = new WebSocket.Server({ port: 4000 });
 // Biến cục bộ lưu trữ kết nối WebSocket của từng deviceId
 const clients = {};
 
-wss.on('connection', (ws, req) => {
+function initWebSocket(server) {
+    const wss = new WebSocket.Server({ server });
+    wss.on('connection', (ws, req) => {
     // Lấy deviceId từ query URL
     const queryParams = req.url.split('?')[1];  // "deviceId=123"
     const deviceId = queryParams.split('=')[1];
@@ -112,6 +114,7 @@ wss.on('connection', (ws, req) => {
         delete clients[deviceId];
     });
 });
+}
 
 /**
  * Hàm gửi lệnh tới thiết bị qua WebSocket.
