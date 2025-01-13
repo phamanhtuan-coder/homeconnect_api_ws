@@ -10,7 +10,6 @@ let serviceAccount;
 
 try {
     serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-    console.log('Service Account:', serviceAccount); // Chỉ log trong môi trường phát triển
 } catch (error) {
     console.error('Lỗi khi parse FIREBASE_SERVICE_ACCOUNT:', error);
     process.exit(1);
