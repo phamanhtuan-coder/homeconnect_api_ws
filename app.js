@@ -41,7 +41,7 @@ app.use('/api/sync', SyncTrackingRouter);
 app.use('/api/dashboard', DashboardRouter);
 app.use('/api/otp', OtpRouter);
 
-app.get('/', (req, res) => {
+app.get('/home', (req, res) => {
     res.json({ message: 'Welcome to HomeConnect API' });
 });
 
