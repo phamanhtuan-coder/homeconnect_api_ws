@@ -16,8 +16,6 @@ const ALERT_MESSAGES = {
     TEMP_HIGH: 'KHẨN CẤP! Nhiệt độ quá cao!',
 };
 
-const wss = new WebSocket.Server({port: 4000});
-
 // Biến cục bộ lưu trữ kết nối WebSocket của từng deviceId
 const clients = {};
 

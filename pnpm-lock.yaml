@@ -21,7 +21,7 @@ importers:
         specifier: ^4.16.5
         version: 4.16.5
       cookie-parser:
-        specifier: ~1.4.4
+        specifier: ~1.4.7
         version: 1.4.7
       debug:
         specifier: ~2.6.9
