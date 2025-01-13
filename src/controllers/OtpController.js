@@ -1,8 +1,5 @@
-
-const nodemailer = require('nodemailer');
 const { users } = require('../models');
-
-
+const { sendOtpEmail } = require('../services/EmailService');
 
 // Hàm tạo OTP ngẫu nhiên
 function generateOTP(length = 6) {
@@ -15,16 +12,17 @@ function generateOTP(length = 6) {
 }
 
 // Hàm gửi OTP và cập nhật vào database
-async function sendOtpEmail(receiverEmail) {
+async function sendOtpEmailHandler(receiverEmail) {
     const otp = generateOTP();  // Tạo mã OTP
     const expiryTime = new Date(Date.now() + 5 * 60 * 1000);  // Thời gian hết hạn OTP sau 5 phút
 
     try {
         // Kiểm tra người dùng có tồn tại không
-        const user = await users .findOne({ where: { Email: receiverEmail } });
+        const user = await users.findOne({ where: { Email: receiverEmail } });
 
         if (!user) {
             console.error(`Không tìm thấy người dùng với email: ${receiverEmail}`);
+            throw new Error('Không tìm thấy người dùng với email này.');
         }
 
         // Cập nhật VerificationCode và VerificationExpiry vào bảng users
@@ -33,30 +31,11 @@ async function sendOtpEmail(receiverEmail) {
             VerificationExpiry: expiryTime
         });
 
-        // Cấu hình transporter gửi email
-        const transporter = nodemailer.createTransport({
-            service: 'Gmail',
-            auth: {
-                user: process.env.EMAIL_USER,
-                pass: process.env.EMAIL_PASS
-            }
-        });
-
-
-        // Nội dung email
-        const mailOptions = {
-            from: `"Team IoT _ CKC F.IT SmartNet Solutions" <${process.env.EMAIL_USER}>`,
-            to: receiverEmail,
-            subject: 'Mã OTP Xác Thực',
-            text: `Mã OTP của bạn là: ${otp}`,
-            html: `<h3>Mã OTP của bạn là: <b>${otp}</b></h3><p>Mã này sẽ hết hạn sau 5 phút.</p>`
-        };
-
-        // Gửi email
-        await transporter.sendMail(mailOptions);
-        console.log(`OTP đã được gửi đến ${receiverEmail}: ${otp}`);
+        // Gửi email OTP sử dụng template Handlebars
+        await sendOtpEmail(receiverEmail, otp);
     } catch (error) {
         console.error('Lỗi khi gửi OTP:', error);
+        throw error;
     }
 }
 
@@ -69,10 +48,10 @@ exports.sendingOTP = async (req, res) => {
     }
 
     try {
-        await sendOtpEmail(email);
+        await sendOtpEmailHandler(email);
         res.status(200).json({ success: true, message: 'OTP đã được gửi đến email của bạn.' });
     } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
+        res.status(500).json({ success: false, message: error.message || 'Lỗi khi gửi OTP.' });
     }
 };
 
@@ -95,17 +74,20 @@ exports.verifyOTP = async (req, res) => {
 
         // Kiểm tra OTP có trùng khớp không
         if (user.VerificationCode !== otp) {
-            return res.status(401).json({ success: false, message: 'UnAuthorize - OTP không đúng.' });
+            return res.status(401).json({ success: false, message: 'OTP không đúng.' });
         }
 
         // Kiểm tra thời gian hết hạn OTP
         const currentTime = new Date();
         if (currentTime > user.VerificationExpiry) {
-            return res.status(401).json({ success: false, message: 'Expired - OTP đã hết hạn.' });
+            return res.status(401).json({ success: false, message: 'OTP đã hết hạn.' });
         }
 
-        // OTP hợp lệ
-        return res.status(200).json({ success: true, message: 'Authorize - OTP hợp lệ.' });
+        // OTP hợp lệ - có thể cập nhật trạng thái xác thực nếu cần
+        // Ví dụ:
+        // await user.update({ isVerified: true, VerificationCode: null, VerificationExpiry: null });
+
+        return res.status(200).json({ success: true, message: 'OTP hợp lệ.' });
 
     } catch (error) {
         console.error('Lỗi khi kiểm tra OTP:', error);
@@ -124,7 +106,7 @@ exports.checkEmailExists = async (req, res) => {
 
     try {
         // Tìm kiếm email trong bảng users
-        const user = await users .findOne({ where: { Email: email } });
+        const user = await users.findOne({ where: { Email: email } });
 
         if (user) {
             return res.status(200).json({ exists: true, message: 'Email tồn tại trong hệ thống.' });
@@ -136,4 +118,3 @@ exports.checkEmailExists = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Lỗi hệ thống.' });
     }
 };
-
