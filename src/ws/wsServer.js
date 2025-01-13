@@ -6,6 +6,9 @@ const {devices, logs, alerts, users} = require('../models');
 // Thêm 'alerts' để tạo cảnh báo
 const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
 
+// Import EmailService
+const { sendEmergencyAlertEmail } = require('../services/EmailService');
+
 const ALERT_TYPES = {
     GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
     TEMP_HIGH: 2,      // Giả sử AlertTypeID=2: cảnh báo nhiệt độ
@@ -147,10 +150,15 @@ async function sendToDevice(deviceId, command, initiatorUserId = null) {
 }
 
 
-// Tạo Alert, tạo FCM
+/**
+ * Hàm tạo cảnh báo và gửi thông báo FCM cũng như email cảnh báo khẩn cấp
+ * @param {object} device - Đối tượng thiết bị
+ * @param {number} alertType - Loại cảnh báo (ID)
+ * @param {string} messageContent - Nội dung thông điệp cảnh báo
+ */
 async function createAlert(device, alertType, messageContent) {
     try {
-        // Create the alert in the database
+        // Tạo cảnh báo trong cơ sở dữ liệu
         const alert = await alerts.create({
             DeviceID: device.DeviceID,
             SpaceID: device.SpaceID || null,
@@ -161,27 +169,39 @@ async function createAlert(device, alertType, messageContent) {
         });
         console.log(`*** ALERT: ${messageContent} ở thiết bị ${device.DeviceID}`);
 
-        // Retrieve the user associated with the device
-        const user = await users.findOne({where: {UserID: device.UserID}});
-        if (user && user.DeviceToken) {
-            // Construct the notification payload as per the latest FCM API
-            const message = {
-                token: user.DeviceToken,
-                notification: {
-                    title: 'Cảnh báo từ thiết bị',
-                    body: messageContent,
-                },
-                data: {
-                    deviceId: device.DeviceID.toString(),
-                    alertType: alertType.toString(),
-                },
-            };
+        // Lấy người dùng liên quan đến thiết bị
+        const user = await users.findOne({ where: { UserID: device.UserID } });
+        if (user) {
+            // Gửi thông báo FCM nếu người dùng có DeviceToken
+            if (user.DeviceToken) {
+                // Cấu trúc payload thông báo
+                const message = {
+                    token: user.DeviceToken,
+                    notification: {
+                        title: 'Cảnh báo từ thiết bị',
+                        body: messageContent,
+                    },
+                    data: {
+                        deviceId: device.DeviceID.toString(),
+                        alertType: alertType.toString(),
+                    },
+                };
 
-            // Send the notification using the updated `send` method
-            const response = await admin.messaging().send(message);
-            console.log(`Đã gửi thông báo FCM đến UserID=${user.UserID}:`, response);
+                // Gửi thông báo FCM
+                const response = await admin.messaging().send(message);
+                console.log(`Đã gửi thông báo FCM đến UserID=${user.UserID}:`, response);
+            } else {
+                console.log(`UserID=${user.UserID} không có DeviceToken.`);
+            }
+
+            // Gửi email cảnh báo khẩn cấp nếu người dùng có Email
+            if (user.Email) {
+                await sendEmergencyAlertEmail(user.Email, messageContent);
+            } else {
+                console.log(`UserID=${user.UserID} không có địa chỉ Email.`);
+            }
         } else {
-            console.log(`UserID=${device.UserID} không có DeviceToken hoặc không tồn tại.`);
+            console.log(`UserID=${device.UserID} không tồn tại.`);
         }
 
         return alert;
