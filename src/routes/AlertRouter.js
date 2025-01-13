@@ -5,7 +5,8 @@ const {
     getAlertById,
     getAlertsByDevice,
     resolveAlert,
-    deleteAlertById
+    deleteAlertById,
+    getAllAlertsByUser
 } = require('../controllers/AlertController');
 
 const { authenticate } = require('../middlewares/authMiddleware');
@@ -17,6 +18,9 @@ router.post('/', authenticate, createAlert);
 
 // Lấy tất cả cảnh báo (GET)
 router.get('/', authenticate, getAllAlerts);
+
+//Lấy tất cả cảnh báo của người dùng (bao gồm thiết bị được chia sẻ)
+router.get('/getAllByUser', authenticate,  getAllAlertsByUser);
 
 // Lấy cảnh báo theo ID (GET)
 router.get('/:id', authenticate, getAlertById);

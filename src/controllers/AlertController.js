@@ -1,5 +1,5 @@
-const { alerts, alerttypes, devices, spaces } = require('../models');
-
+const { alerts, alerttypes, devices, spaces , sharedpermissions, devicetypes, houses } = require('../models');
+const { Op } = require('sequelize');
 // Tạo cảnh báo mới (dành cho thiết bị gửi lên qua ESP/WebSocket)
 exports.createAlert = async (req, res) => {
     try {
@@ -139,5 +139,69 @@ exports.deleteAlertById = async (req, res) => {
         res.status(204).send();
     } catch (error) {
         res.status(500).json({ error: error.message });
+    }
+};
+
+/**
+ * Lấy toàn bộ alerts của toàn bộ các thiết bị (sở hữu và được chia sẻ) của userId
+ */
+exports.getAllAlertsByUser = async (req, res) => {
+    try {
+        const userId = req.user.id; // Lấy userId từ JWT
+
+        // 1. Lấy tất cả các thiết bị mà người dùng sở hữu
+        const ownedDevices = await devices.findAll({
+            where: { UserID: userId },
+            attributes: ['DeviceID']
+        });
+
+        // 2. Lấy tất cả các thiết bị được chia sẻ với người dùng
+        const sharedPermissions = await sharedpermissions.findAll({
+            where: { SharedWithUserID: userId },
+            include: {
+                model: devices,
+                as: 'Device',
+                attributes: ['DeviceID']
+            },
+            attributes: [] // Không cần các thuộc tính của SharedPermission
+        });
+
+        // 3. Lấy danh sách DeviceID từ ownedDevices và sharedPermissions
+        const ownedDeviceIds = ownedDevices.map(device => device.DeviceID);
+        const sharedDeviceIds = sharedPermissions.map(sp => sp.Device.DeviceID);
+
+        // 4. Kết hợp và loại bỏ các DeviceID trùng lặp
+        const allDeviceIds = [...new Set([...ownedDeviceIds, ...sharedDeviceIds])];
+
+        if (allDeviceIds.length === 0) {
+            // Nếu người dùng không có thiết bị nào, trả về mảng rỗng
+            return res.status(200).json([]);
+        }
+
+        // 5. Lấy tất cả các alerts của các thiết bị trong danh sách allDeviceIds
+        const alertsList = await alerts.findAll({
+            where: {
+                DeviceID: {
+                    [Op.in]: allDeviceIds
+                }
+            },
+            include: [
+                {
+                    model: devices,
+                    as: 'Device',
+                    include: [
+                        { model: devicetypes, as: 'DeviceType' },
+                        { model: spaces, as: 'Space' },
+                        { model: houses, as: 'House' }
+                    ]
+                }
+            ],
+            order: [['createdAt', 'DESC']] // Sắp xếp alerts mới nhất trước
+        });
+
+        return res.status(200).json(alertsList);
+    } catch (error) {
+        console.error('Error fetching alerts:', error);
+        return res.status(500).json({ error: error.message });
     }
 };
