@@ -154,6 +154,58 @@ exports.getUserSharedDevices = async (req, res) => {
     }
 };
 
+/**
+ * Lấy tất cả thiết bị mà người dùng có quyền truy cập (gồm sở hữu và được chia sẻ)
+ */
+exports.getAllDevicesUserCanAccess = async (req, res) => {
+    try {
+        const userId = req.user.id;  // Hoặc req.params.id tuỳ cách bạn đang truyền user ID
+
+        // 1. Lấy danh sách các thiết bị người dùng sở hữu
+        const ownedDevices = await devices.findAll({
+            where: { UserID: userId },
+            include: [
+                { model: devicetypes, as: 'DeviceType' },
+                { model: spaces, as: 'Space' },
+                { model: houses, as: 'House' }
+            ]
+        });
+
+        // 2. Lấy danh sách các thiết bị người dùng được chia sẻ
+        //    Để đồng bộ thông tin device (vd: include DeviceType, Space...),
+        //    ta bổ sung thêm các quan hệ cần thiết trong phần `include`.
+        const sharedPermissions = await sharedpermissions.findAll({
+            where: { SharedWithUserID: userId },
+            include: [{
+                model: devices,
+                as: 'Device',
+                // Lồng các include nếu muốn lấy đủ thông tin giống ownedDevices
+                include: [
+                    { model: devicetypes, as: 'DeviceType' },
+                    { model: spaces, as: 'Space' },
+                    { model: houses, as: 'House' }
+                ],
+                // Lọc bớt cột nếu cần thiết
+                attributes: ['DeviceID', 'Name', 'TypeID', 'UserID']
+            }],
+            // Lọc bớt cột của sharedpermissions nếu cần
+            attributes: { exclude: ['updatedAt', 'OwnerUserID'] }
+        });
+
+        // 3. Chuẩn hoá mảng thiết bị được chia sẻ
+        //    Vì phần sharedPermissions trả về mỗi bản ghi là 1 sharedpermission + 1 Device
+        //    nên ta cần map để lấy riêng danh sách thiết bị.
+        const sharedDevices = sharedPermissions.map(sp => sp.Device);
+
+        // 4. Gộp hai mảng
+        const allDevices = [...ownedDevices, ...sharedDevices];
+
+        // 5. Trả về cho client
+        return res.status(200).json(allDevices);
+    } catch (error) {
+        return res.status(500).json({ error: error.message });
+    }
+};
 
 /**
  * Lấy thiết bị được chia sẻ với người dùng (Get Devices Shared With User)
