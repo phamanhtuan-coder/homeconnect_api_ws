@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="">
+<head>
+    <meta charset="UTF-8">
+    <title>Mã OTP Xác Thực</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 30px auto;
+            background-color: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e4e4e4;
+        }
+        .header img {
+            max-width: 150px;
+        }
+        .content {
+            padding: 20px 0;
+            text-align: center;
+        }
+        .otp {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333333;
+            margin: 20px 0;
+            padding: 10px;
+            background-color: #f0f0f0;
+            display: inline-block;
+            border-radius: 4px;
+        }
+        .footer {
+            font-size: 12px;
+            color: #777777;
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #e4e4e4;
+        }
+        @media only screen and (max-width: 600px) {
+            .container {
+                padding: 10px;
+            }
+            .otp {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="header">
+        <!-- Thêm logo công ty tại đây -->
+        <img src="https://ibb.co/ZzhfQ5h" alt="SmartNet Solutions">
+    </div>
+    <div class="content">
+        <h2>Xác Thực Tài Khoản của Bạn</h2>
+        <p>Chào bạn,</p>
+        <p>Để hoàn tất việc đăng ký tài khoản, vui lòng sử dụng mã OTP dưới đây:</p>
+        <div class="otp">{{otp}}</div>
+        <p>Mã OTP này sẽ hết hạn sau <strong>5 phút</strong>.</p>
+        <p>Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email này.</p>
+    </div>
+    <div class="footer">
+        <p>© {{currentYear}} SmartNet Solutions. Bảo lưu mọi quyền.</p>
+    </div>
+</div>
+</body>
+</html>
