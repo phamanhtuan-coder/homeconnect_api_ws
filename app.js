@@ -1,3 +1,5 @@
+// app.js
+
 const createError = require('http-errors');
 const express = require('express');
 const path = require('path');
@@ -24,7 +26,6 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
 const { authenticate } = require('./src/middlewares/authMiddleware');
 
 // API routes
@@ -38,7 +39,11 @@ app.use('/api/logs', LogRouter);
 app.use('/api/auth', AuthRouter);
 app.use('/api/sync', SyncTrackingRouter);
 app.use('/api/dashboard', DashboardRouter);
-app.use('/api/otp',OtpRouter)
+app.use('/api/otp', OtpRouter);
+
+app.get('/', (req, res) => {
+    res.json({ message: 'Welcome to HomeConnect API' });
+});
 
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
@@ -51,14 +56,8 @@ app.use(function (err, req, res, next) {
     res.locals.message = err.message;
     res.locals.error = req.app.get('env') === 'development' ? err : {};
 
-    // Send JSON response for API errors
-    if (req.originalUrl.startsWith('/api')) {
-        res.status(err.status || 500).json({ error: err.message });
-    } else {
-        // Render error page for non-API routes
-        res.status(err.status || 500);
-        res.render('error');
-    }
+    // Send JSON response for all errors
+    res.status(err.status || 500).json({ error: err.message });
 });
 
 module.exports = app;
