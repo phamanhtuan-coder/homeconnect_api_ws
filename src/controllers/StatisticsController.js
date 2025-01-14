@@ -419,12 +419,11 @@ exports.calculateDailyPowerUsage = async (req, res) => {
                     ]
                 },
                 [Op.and]: Sequelize.where(
-                    Sequelize.fn('JSON_EXTRACT', Sequelize.col('Action'), '$.fromServer'),
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
                     1
                 )
             },
-            order: [['Timestamp', 'ASC']],
-            raw: false
+            order: [['Timestamp', 'ASC']]
         });
 
         console.log(`Found ${Logs.length} logs`);
@@ -613,9 +612,10 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
                         endDate
                     ]
                 },
-                Action: {
-                    [Op.contains]: { fromServer: true } // Chỉ lấy logs từ server
-                }
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                    1
+                )
             },
             order: [['Timestamp', 'ASC']]
         });
