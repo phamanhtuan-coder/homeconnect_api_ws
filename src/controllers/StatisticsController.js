@@ -53,7 +53,7 @@ exports.calculateDailyAverageSensor = async (req, res) => {
                 [Op.and]: Sequelize.where(
                     Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
                     1
-                )
+        )
             }
         });
 
@@ -68,6 +68,7 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         let count = 0;
 
         Logs.forEach(log => {
+            console.log("Chi tiết: ",log)
             if (log.Details && log.Details.type === 'sensorData') {
                 if (log.Details.gas !== undefined) {
                     totalGas += log.Details.gas;
