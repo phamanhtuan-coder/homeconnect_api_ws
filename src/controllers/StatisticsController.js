@@ -87,11 +87,11 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         const averageHumidity = count > 0 ? totalHumidity / count : 0;
 
         // Lấy SpaceID từ thiết bị tại thời điểm đó
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         const spaceId = device ? device.SpaceID : null;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Average Sensor',
