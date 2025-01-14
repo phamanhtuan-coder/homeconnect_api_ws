@@ -419,9 +419,10 @@ exports.calculateDailyPowerUsage = async (req, res) => {
                         new Date(`${date}T23:59:59.999Z`)
                     ]
                 },
-                Action: {
-                    [Op.contains]: { fromServer: true } // Chỉ lấy logs từ server
-                }
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                    1
+                )
             },
             order: [['Timestamp', 'ASC']]
         });
