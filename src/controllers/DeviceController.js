@@ -37,19 +37,26 @@ exports.createDevice = async (req, res) => {
 exports.linkDevice = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { deviceId } = req.body;
+        const { deviceId, spaceId, deviceName } = req.body;  // Added spaceId and deviceName to the body extraction
 
         const device = await devices.findByPk(deviceId);
         if (!device) {
             return res.status(404).json({ error: 'Thiết bị không được tìm thấy' });
         }
 
-        await device.update({ UserID: userId });
-        res.status(200).json({ message: 'Device linked successfully', device });
+        // Update device with UserID, SpaceID, and Name
+        await device.update({
+            UserID: userId,
+            SpaceID: spaceId,
+            Name: deviceName
+        });
+
+        res.status(200).json({ message: 'Thiết bị liên kết thành công', device });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 /**
  * Bật/Tắt thiết bị qua WebSocket (Toggle Device Power)
