@@ -261,7 +261,7 @@ exports.unlinkDevice = async (req, res) => {
         }
 
         // Cập nhật UserID về null (gỡ liên kết)
-        await device.update({ UserID: null });
+        await device.update({ UserID: null, SpaceID: null });
         res.status(200).json({ message: 'Gỡ liên kết thiết bị thành công' });
     } catch (error) {
         res.status(500).json({ error: error.message });
