@@ -419,12 +419,12 @@ exports.calculateDailyPowerUsage = async (req, res) => {
                     ]
                 },
                 [Op.and]: Sequelize.where(
-                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                    Sequelize.fn('JSON_EXTRACT', Sequelize.col('Action'), '$.fromServer'),
                     1
                 )
             },
             order: [['Timestamp', 'ASC']],
-            raw: false // Đảm bảo Sequelize parse JSON
+            raw: false
         });
 
         console.log(`Found ${Logs.length} logs`);
