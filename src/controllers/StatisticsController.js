@@ -1,5 +1,5 @@
 const { logs, devices, statistics, devicetypes } = require('../models');
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize'); // Thêm Sequelize vào đây
 const {calculateTotalPowerOnTime} = require("../helpers/StatisticsHelper");
 
 // Định nghĩa các loại thống kê
@@ -30,6 +30,7 @@ const POWER_RATINGS_BY_TYPEID = {
 
 
 // Tính trung bình sensor hàng ngày cho một thiết bị
+
 exports.calculateDailyAverageSensor = async (req, res) => {
     try {
         const { deviceId, date } = req.body;
@@ -39,7 +40,7 @@ exports.calculateDailyAverageSensor = async (req, res) => {
             return res.status(400).json({ message: 'DeviceID và Date là bắt buộc.' });
         }
 
-        // Lấy logs trong ngày cho thiết bị và chỉ lấy từ device
+        // Sử dụng Sequelize.where và JSON_CONTAINS cho MariaDB
         const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
@@ -49,9 +50,10 @@ exports.calculateDailyAverageSensor = async (req, res) => {
                         new Date(`${date}T23:59:59.999Z`)
                     ]
                 },
-                Action: {
-                    [Op.contains]: { fromDevice: true } // Chỉ lấy logs từ device
-                }
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                    1
+                )
             }
         });
 
@@ -65,16 +67,16 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         let totalHumidity = 0;
         let count = 0;
 
-        Logs.forEach(logs => {
-            if (logs.Details && logs.Details.type === 'sensorData') {
-                if (logs.Details.gas !== undefined) {
-                    totalGas += logs.Details.gas;
+        Logs.forEach(log => {
+            if (log.Details && log.Details.type === 'sensorData') {
+                if (log.Details.gas !== undefined) {
+                    totalGas += log.Details.gas;
                 }
-                if (logs.Details.temperature !== undefined) {
-                    totalTemperature += logs.Details.temperature;
+                if (log.Details.temperature !== undefined) {
+                    totalTemperature += log.Details.temperature;
                 }
-                if (logs.Details.humidity !== undefined) {
-                    totalHumidity += logs.Details.humidity;
+                if (log.Details.humidity !== undefined) {
+                    totalHumidity += log.Details.humidity;
                 }
                 count += 1;
             }
@@ -85,11 +87,11 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         const averageHumidity = count > 0 ? totalHumidity / count : 0;
 
         // Lấy SpaceID từ thiết bị tại thời điểm đó
-        const device = await devices.findByPk(deviceId);
+        const device = await Device.findByPk(deviceId);
         const spaceId = device ? device.SpaceID : null;
 
         // Lưu vào bảng thống kê
-        await statistics.create({
+        await Statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Average Sensor',
