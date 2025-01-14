@@ -1,4 +1,4 @@
-const { Log, Device, Statistics, StatisticTypes, DeviceTypes } = require('../models');
+const { logs, devices, statistics, devicetypes } = require('../models');
 const { Op } = require('sequelize');
 const {calculateTotalPowerOnTime} = require("../helpers/StatisticsHelper");
 
@@ -40,7 +40,7 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         }
 
         // Lấy logs trong ngày cho thiết bị và chỉ lấy từ device
-        const logs = await Log.findAll({
+        const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -55,7 +55,7 @@ exports.calculateDailyAverageSensor = async (req, res) => {
             }
         });
 
-        if (logs.length === 0) {
+        if (Logs.length === 0) {
             return res.status(404).json({ message: 'Không tìm thấy logs cho thiết bị trong ngày này.' });
         }
 
@@ -65,16 +65,16 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         let totalHumidity = 0;
         let count = 0;
 
-        logs.forEach(log => {
-            if (log.Details && log.Details.type === 'sensorData') {
-                if (log.Details.gas !== undefined) {
-                    totalGas += log.Details.gas;
+        Logs.forEach(logs => {
+            if (logs.Details && logs.Details.type === 'sensorData') {
+                if (logs.Details.gas !== undefined) {
+                    totalGas += logs.Details.gas;
                 }
-                if (log.Details.temperature !== undefined) {
-                    totalTemperature += log.Details.temperature;
+                if (logs.Details.temperature !== undefined) {
+                    totalTemperature += logs.Details.temperature;
                 }
-                if (log.Details.humidity !== undefined) {
-                    totalHumidity += log.Details.humidity;
+                if (logs.Details.humidity !== undefined) {
+                    totalHumidity += logs.Details.humidity;
                 }
                 count += 1;
             }
@@ -85,11 +85,11 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         const averageHumidity = count > 0 ? totalHumidity / count : 0;
 
         // Lấy SpaceID từ thiết bị tại thời điểm đó
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         const spaceId = device ? device.SpaceID : null;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Average Sensor',
@@ -127,7 +127,7 @@ exports.calculateWeeklyAverageSensor = async (req, res) => {
         }
 
         // Lấy 7 ngày gần nhất từ bảng thống kê loại DAILY_AVERAGE_SENSOR
-        const dailyStats = await Statistics.findAll({
+        const dailyStats = await statistics.findAll({
             where: {
                 DeviceID: deviceId,
                 StatisticsTypeID: STATISTICS_TYPES.DAILY_AVERAGE_SENSOR,
@@ -163,11 +163,11 @@ exports.calculateWeeklyAverageSensor = async (req, res) => {
         const currentDate = new Date().toISOString().split('T')[0];
 
         // Lấy SpaceID từ thiết bị tại thời điểm đó
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         const spaceId = device ? device.SpaceID : null;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Weekly Average Sensor',
@@ -205,7 +205,7 @@ exports.getWeeklyAverageSensor = async (req, res) => {
         }
 
         // Lấy thống kê tuần gần nhất
-        const weeklyStat = await Statistics.findOne({
+        const weeklyStat = await statistics.findOne({
             where: {
                 DeviceID: deviceId,
                 StatisticsTypeID: STATISTICS_TYPES.WEEKLY_AVERAGE_SENSOR,
@@ -237,7 +237,7 @@ exports.calculateAverageSensorForRange = async (req, res) => {
         }
 
         // Lấy logs trong khoảng thời gian cho thiết bị và chỉ từ device
-        const logs = await Log.findAll({
+        const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -252,7 +252,7 @@ exports.calculateAverageSensorForRange = async (req, res) => {
             }
         });
 
-        if (logs.length === 0) {
+        if (Logs.length === 0) {
             return res.status(404).json({ message: 'Không tìm thấy logs sensor cho thiết bị trong khoảng thời gian này.' });
         }
 
@@ -262,16 +262,16 @@ exports.calculateAverageSensorForRange = async (req, res) => {
         let totalHumidity = 0;
         let count = 0;
 
-        logs.forEach(log => {
-            if (log.Details && log.Details.type === 'sensorData') {
-                if (log.Details.gas !== undefined) {
-                    totalGas += log.Details.gas;
+        Logs.forEach(logs => {
+            if (logs.Details && logs.Details.type === 'sensorData') {
+                if (logs.Details.gas !== undefined) {
+                    totalGas += logs.Details.gas;
                 }
-                if (log.Details.temperature !== undefined) {
-                    totalTemperature += log.Details.temperature;
+                if (logs.Details.temperature !== undefined) {
+                    totalTemperature += logs.Details.temperature;
                 }
-                if (log.Details.humidity !== undefined) {
-                    totalHumidity += log.Details.humidity;
+                if (logs.Details.humidity !== undefined) {
+                    totalHumidity += logs.Details.humidity;
                 }
                 count += 1;
             }
@@ -282,11 +282,11 @@ exports.calculateAverageSensorForRange = async (req, res) => {
         const averageHumidity = count > 0 ? totalHumidity / count : 0;
 
         // Lấy SpaceID từ thiết bị tại thời điểm đó
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         const spaceId = device ? device.SpaceID : null;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Range Average Sensor',
@@ -323,7 +323,7 @@ exports.getDailyAveragesSensorForRange = async (req, res) => {
         }
 
         // Lấy thống kê loại DAILY_AVERAGE_SENSOR trong khoảng thời gian
-        const dailyStats = await Statistics.findAll({
+        const dailyStats = await statistics.findAll({
             where: {
                 DeviceID: deviceId,
                 StatisticsTypeID: STATISTICS_TYPES.DAILY_AVERAGE_SENSOR,
@@ -365,7 +365,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeID
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         if (!device) {
             return res.status(404).json({ message: 'Không tìm thấy thiết bị.' });
         }
@@ -378,7 +378,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         const powerRating = POWER_RATINGS_BY_TYPEID[typeId]; // Công suất tiêu thụ (Watt)
 
         // Lấy logs trong ngày cho thiết bị và chỉ lấy từ server
-        const logs = await Log.findAll({
+        const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -394,12 +394,12 @@ exports.calculateDailyPowerUsage = async (req, res) => {
             order: [['Timestamp', 'ASC']]
         });
 
-        if (logs.length === 0) {
+        if (Logs.length === 0) {
             return res.status(404).json({ message: 'Không tìm thấy logs từ server cho thiết bị trong ngày này.' });
         }
 
         // Tính tổng thời gian bật trong ngày
-        const totalOnTimeHours = calculateTotalPowerOnTime(logs, date, date);
+        const totalOnTimeHours = calculateTotalPowerOnTime(Logs, date, date);
 
         // Tính điện tiêu thụ: Power (W) * Time (h) / 1000 = Energy (kWh)
         const energyConsumed = (powerRating * totalOnTimeHours) / 1000; // Tính bằng kWh
@@ -408,7 +408,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         const spaceId = device.SpaceID;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Power Usage',
@@ -445,9 +445,9 @@ exports.calculateWeeklyPowerUsage = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeName hoặc TypeID
-        const device = await Device.findByPk(deviceId, {
+        const device = await devices.findByPk(deviceId, {
             include: {
-                model: DeviceTypes,
+                model: devicetypes,
                 as: 'DeviceType',
                 attributes: ['TypeName', 'TypeID']
             }
@@ -468,7 +468,7 @@ exports.calculateWeeklyPowerUsage = async (req, res) => {
         }
 
         // Lấy 7 ngày gần nhất từ bảng thống kê loại DAILY_POWER_USAGE
-        const dailyStats = await Statistics.findAll({
+        const dailyStats = await statistics.findAll({
             where: {
                 DeviceID: deviceId,
                 StatisticsTypeID: STATISTICS_TYPES.DAILY_POWER_USAGE,
@@ -503,7 +503,7 @@ exports.calculateWeeklyPowerUsage = async (req, res) => {
         const spaceId = device.SpaceID;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Weekly Power Usage',
@@ -540,9 +540,9 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeName hoặc TypeID
-        const device = await Device.findByPk(deviceId, {
+        const device = await devices.findByPk(deviceId, {
             include: {
-                model: DeviceTypes,
+                model: devicetypes,
                 as: 'DeviceType',
                 attributes: ['TypeName', 'TypeID']
             }
@@ -569,7 +569,7 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
         endDate.setMilliseconds(endDate.getMilliseconds() - 1);
 
         // Lấy logs trong tháng cho thiết bị và chỉ từ server
-        const logs = await Log.findAll({
+        const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -585,13 +585,13 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
             order: [['Timestamp', 'ASC']]
         });
 
-        if (logs.length === 0) {
+        if (Logs.length === 0) {
             return res.status(404).json({ message: 'Không tìm thấy logs từ server cho thiết bị trong tháng này.' });
         }
 
         // Tính tổng thời gian bật trong tháng
         const totalOnTimeHours = calculateTotalPowerOnTime(
-            logs,
+            Logs,
             startDate.toISOString().split('T')[0],
             endDate.toISOString().split('T')[0]
         );
@@ -603,7 +603,7 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
         const spaceId = device.SpaceID;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Monthly Power Usage',
@@ -640,9 +640,9 @@ exports.getDailyPowerUsageForRange = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeName hoặc TypeID
-        const device = await Device.findByPk(deviceId, {
+        const device = await devices.findByPk(deviceId, {
             include: {
-                model: DeviceTypes,
+                model: devicetypes,
                 as: 'DeviceType',
                 attributes: ['TypeName', 'TypeID']
             }
@@ -663,7 +663,7 @@ exports.getDailyPowerUsageForRange = async (req, res) => {
         }
 
         // Lấy thống kê loại DAILY_POWER_USAGE trong khoảng thời gian
-        const dailyStats = await Statistics.findAll({
+        const dailyStats = await statistics.findAll({
             where: {
                 DeviceID: deviceId,
                 StatisticsTypeID: STATISTICS_TYPES.DAILY_POWER_USAGE,
