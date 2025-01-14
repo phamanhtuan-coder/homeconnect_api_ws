@@ -18,7 +18,7 @@ const AuthRouter = require('./src/routes/AuthRouter');
 const SyncTrackingRouter = require('./src/routes/SyncTrackingRouter');
 const DashboardRouter = require('./src/routes/DashboardRouter');
 const OtpRouter = require('./src/routes/OtpRouter');
-
+const StatisticsRouter = require('./src/routes/StatisticsRouter');
 const app = express();
 
 // Middleware setup
@@ -40,7 +40,7 @@ app.use('/api/auth', AuthRouter);
 app.use('/api/sync', SyncTrackingRouter);
 app.use('/api/dashboard', DashboardRouter);
 app.use('/api/otp', OtpRouter);
-
+app.use('/api/statistics',StatisticsRouter)
 app.get('/home', (req, res) => {
     res.json({ message: 'Welcome to HomeConnect API' });
 });
