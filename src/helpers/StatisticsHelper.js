@@ -14,10 +14,21 @@ const calculateTotalPowerOnTime = (logs, startDate, endDate) => {
     let lastOnTimestamp = null;
 
     sortedLogs.forEach(log => {
-        const action = log.Action.command.action;
-        const powerStatus = log.Action.command.powerStatus;
+        let action = log.Action;
+        if (typeof action  === 'string') {
+            try {
+                action= JSON.parse(action);
+            } catch (e) {
+                console.error(`Invalid JSON in Details for LogID ${log.LogID}:`, log.Action);
+                action = null;
+            }
+        }
 
-        if (action === 'toggle') {
+
+        const command = action.command.action;
+        const powerStatus = action.command.powerStatus;
+
+        if (command === 'toggle') {
             if (powerStatus) {
                 // Thiết bị được bật
                 lastOnTimestamp = new Date(log.Timestamp);
