@@ -396,7 +396,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeID
-        const device = await Device.findByPk(deviceId);
+        const device = await devices.findByPk(deviceId);
         if (!device) {
             return res.status(404).json({ message: 'Không tìm thấy thiết bị.' });
         }
@@ -409,7 +409,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         const powerRating = POWER_RATINGS_BY_TYPEID[typeId]; // Công suất tiêu thụ (Watt)
 
         // Truy vấn sử dụng JSON_CONTAINS cho cột Action
-        const Logs = await Log.findAll({
+        const Logs = await logs.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -443,7 +443,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         const spaceId = device.SpaceID;
 
         // Lưu vào bảng thống kê
-        await Statistics.create({
+        await statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Power Usage',
