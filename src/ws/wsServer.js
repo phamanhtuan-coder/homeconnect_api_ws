@@ -31,6 +31,17 @@ function initWebSocket(server) {
         clients[deviceId] = ws;
 
         console.log(`Thiết bị ${deviceId} đã kết nối qua WebSocket`);
+        // Ping client mỗi 25 giây
+        const interval = setInterval(() => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.ping();
+                console.log('Gửi ping đến client');
+            }
+        }, 25000);
+
+        ws.on('pong', () => {
+            console.log('Nhận pong từ client');
+        });
 
         // Khi thiết bị gửi message lên
         ws.on('message', async (message) => {

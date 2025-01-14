@@ -22,6 +22,8 @@ app.set('port', port);
  */
 
 const server = http.createServer(app);
+server.keepAliveTimeout = 60000;  // Tăng timeout lên 60 giây
+server.headersTimeout = 65000;
 
 /**
  * Initialize WebSocket Server
