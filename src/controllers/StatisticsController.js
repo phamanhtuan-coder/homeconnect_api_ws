@@ -386,7 +386,6 @@ exports.getDailyAveragesSensorForRange = async (req, res) => {
 };
 
 
-// hàm calculateDailyPowerUsage tính điện năng tiêu thụ hàng ngày
 exports.calculateDailyPowerUsage = async (req, res) => {
     try {
         const { deviceId, date } = req.body;
@@ -397,7 +396,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         }
 
         // Lấy thiết bị để biết TypeID
-        const device = await devices.findByPk(deviceId);
+        const device = await Device.findByPk(deviceId);
         if (!device) {
             return res.status(404).json({ message: 'Không tìm thấy thiết bị.' });
         }
@@ -409,8 +408,8 @@ exports.calculateDailyPowerUsage = async (req, res) => {
 
         const powerRating = POWER_RATINGS_BY_TYPEID[typeId]; // Công suất tiêu thụ (Watt)
 
-        // Lấy logs trong ngày cho thiết bị và chỉ lấy từ server
-        const Logs = await logs.findAll({
+        // Truy vấn sử dụng JSON_CONTAINS cho cột Action
+        const Logs = await Log.findAll({
             where: {
                 DeviceID: deviceId,
                 Timestamp: {
@@ -424,8 +423,11 @@ exports.calculateDailyPowerUsage = async (req, res) => {
                     1
                 )
             },
-            order: [['Timestamp', 'ASC']]
+            order: [['Timestamp', 'ASC']],
+            raw: false // Đảm bảo Sequelize parse JSON
         });
+
+        console.log(`Found ${Logs.length} logs`);
 
         if (Logs.length === 0) {
             return res.status(404).json({ message: 'Không tìm thấy logs từ server cho thiết bị trong ngày này.' });
@@ -441,7 +443,7 @@ exports.calculateDailyPowerUsage = async (req, res) => {
         const spaceId = device.SpaceID;
 
         // Lưu vào bảng thống kê
-        await statistics.create({
+        await Statistics.create({
             DeviceID: deviceId,
             SpaceID: spaceId,
             Type: 'Daily Power Usage',
