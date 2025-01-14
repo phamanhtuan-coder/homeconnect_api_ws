@@ -266,9 +266,10 @@ exports.calculateAverageSensorForRange = async (req, res) => {
                         new Date(`${endDate}T23:59:59.999Z`)
                     ]
                 },
-                Action: {
-                    [Op.contains]: { fromDevice: true } // Chỉ lấy logs từ device
-                }
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                    1
+                )
             }
         });
 
@@ -282,16 +283,27 @@ exports.calculateAverageSensorForRange = async (req, res) => {
         let totalHumidity = 0;
         let count = 0;
 
-        Logs.forEach(logs => {
-            if (logs.Details && logs.Details.type === 'sensorData') {
-                if (logs.Details.gas !== undefined) {
-                    totalGas += logs.Details.gas;
+        Logs.forEach(log => {
+            let details = log.Details;
+            if (typeof details === 'string') {
+                try {
+                    details = JSON.parse(details);
+                } catch (e) {
+                    console.error(`Invalid JSON in Details for LogID ${log.LogID}:`, log.Details);
+                    details = null;
                 }
-                if (logs.Details.temperature !== undefined) {
-                    totalTemperature += logs.Details.temperature;
+            }
+
+
+            if (details && details.type === 'sensorData') {
+                if (details.gas !== undefined) {
+                    totalGas += details.gas;
                 }
-                if (logs.Details.humidity !== undefined) {
-                    totalHumidity += logs.Details.humidity;
+                if (details.temperature !== undefined) {
+                    totalTemperature += details.temperature;
+                }
+                if (details.humidity !== undefined) {
+                    totalHumidity += details.humidity;
                 }
                 count += 1;
             }
