@@ -158,10 +158,19 @@ exports.calculateWeeklyAverageSensor = async (req, res) => {
         let count = 0;
 
         dailyStats.forEach(stat => {
-            if (stat.Value) {
-                totalGas += stat.Value.averageGas || 0;
-                totalTemperature += stat.Value.averageTemperature || 0;
-                totalHumidity += stat.Value.averageHumidity || 0;
+            let value = stat.Value;
+            if (typeof value=== 'string') {
+                try {
+                    value = JSON.parse(value);
+                } catch (e) {
+                    console.error(`Invalid JSON in Value for StatID ${stat.LogID}:`, stat.Value);
+                   value = null;
+                }
+            }
+            if (value) {
+                totalGas += value.averageGas || 0;
+                totalTemperature += value.averageTemperature || 0;
+                totalHumidity += value.averageHumidity || 0;
                 count += 1;
             }
         });
