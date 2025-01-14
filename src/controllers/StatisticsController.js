@@ -68,16 +68,24 @@ exports.calculateDailyAverageSensor = async (req, res) => {
         let count = 0;
 
         Logs.forEach(log => {
-            console.log("Chi tiết: ",log)
-            if (log.Details && log.Details.type === 'sensorData') {
-                if (log.Details.gas !== undefined) {
-                    totalGas += log.Details.gas;
+            let details = log.Details;
+            if (typeof details === 'string') {
+                try {
+                    details = JSON.parse(details);
+                } catch (e) {
+                    console.error(`Invalid JSON in Details for LogID ${log.LogID}:`, log.Details);
+                    details = null;
                 }
-                if (log.Details.temperature !== undefined) {
-                    totalTemperature += log.Details.temperature;
+            }
+            if (details && details.type === 'sensorData') {
+                if (details.gas !== undefined) {
+                    totalGas += details.gas;
                 }
-                if (log.Details.humidity !== undefined) {
-                    totalHumidity += log.Details.humidity;
+                if (details.temperature !== undefined) {
+                    totalTemperature += details.temperature;
+                }
+                if (details.humidity !== undefined) {
+                    totalHumidity += details.humidity;
                 }
                 count += 1;
             }
