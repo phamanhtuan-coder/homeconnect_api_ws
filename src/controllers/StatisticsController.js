@@ -613,7 +613,7 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
                     ]
                 },
                 [Op.and]: Sequelize.where(
-                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), Sequelize.literal(`'{"fromServer": true}'`)),
                     1
                 )
             },
