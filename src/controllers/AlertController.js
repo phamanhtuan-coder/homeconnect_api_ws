@@ -73,7 +73,8 @@ exports.getAlertById = async (req, res) => {
                     model: alerttypes,
                     as: 'AlertType',
                     attributes: ['AlertTypeName']
-                }
+                },
+
             ],
             nest: true
         });
@@ -96,11 +97,22 @@ exports.getAlertsByDevice = async (req, res) => {
             where: {
                 DeviceID: req.params.deviceId
             },
-            include: {
-                model: alerttypes,
-                as: 'AlertType',
-                attributes: ['AlertTypeName']
-            },
+            include: [
+                {
+                    model: devices,
+                    as: 'Device',
+                    include: [
+                        { model: devicetypes, as: 'DeviceType' },
+                        {
+                            model: spaces,
+                            as: 'Space',
+                            include: [
+                                { model: houses, as: 'House' }
+                            ]
+                        }
+                    ]
+                }
+            ],
             nest: true
         });
 
