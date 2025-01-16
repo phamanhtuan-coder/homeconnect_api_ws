@@ -168,12 +168,17 @@ exports.getLogsByUser = async (req, res) => {
                 {
                     model: devices,
                     as: 'Device',
-                    attributes: ['DeviceID', 'Name']  // Lấy tên và ID thiết bị
+                    attributes: ['DeviceID', 'Name']
                 },
                 {
                     model: spaces,
                     as: 'Space',
-                    attributes: ['SpaceID', 'Name']  // Lấy tên và ID không gian
+                    attributes: ['SpaceID', 'Name']
+                },
+                {
+                    model: users,
+                    as: 'user',  // Sửa từ 'User' thành 'user'
+                    attributes: ['UserID', 'Name']
                 }
             ],
             order: [['Timestamp', 'DESC']]  // Sắp xếp log theo thời gian mới nhất
