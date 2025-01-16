@@ -130,10 +130,10 @@ exports.resolveAlert = async (req, res) => {
             return res.status(404).json({ error: 'Alert not found' });
         }
 
-        alert.Status = false;  // Đánh dấu đã xử lý
+        alert.Status = true;  // Đánh dấu đã xử lý
         await alert.save();
 
-        res.status(200).json({ message: 'Alert resolved', alert });
+        res.status(200).json({ alert });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
