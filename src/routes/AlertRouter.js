@@ -6,7 +6,8 @@ const {
     getAlertsByDevice,
     resolveAlert,
     deleteAlertById,
-    getAllAlertsByUser
+    getAllAlertsByUser,
+    searchAlerts
 } = require('../controllers/AlertController');
 
 const { authenticate } = require('../middlewares/authMiddleware');
@@ -33,5 +34,8 @@ router.put('/:id/resolve', authenticate, resolveAlert);
 
 // Xóa cảnh báo (DELETE)
 router.delete('/:id', authenticate, deleteAlertById);
+
+// Tra cứu
+router.get('/search', alertsController.searchAlerts);
 
 module.exports = router;

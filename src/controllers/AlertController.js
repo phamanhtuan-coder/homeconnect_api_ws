@@ -222,3 +222,42 @@ exports.getAllAlertsByUser = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+// Tìm kiếm cảnh báo theo nội dung thông báo
+exports.searchAlerts = async (req, res) => {
+    try {
+        const { q } = req.query;
+
+        if (!q) {
+            return res.status(400).json({ error: 'Missing search query parameter "q"' });
+        }
+
+        // Tìm kiếm cảnh báo với Message chứa nội dung 'q' (không phân biệt chữ hoa chữ thường)
+        const foundAlerts = await alerts.findAll({
+            where: {
+                Message: {
+                    [Op.Like]: `%${q}%`
+                }
+            },
+            attributes: ['AlertID', 'DeviceID', 'SpaceID', 'TypeID', 'Message', 'Timestamp', 'Status', 'AlertTypeID'],
+            include: [
+                {
+                    model: devices,
+                    as: 'Device',
+                    attributes: ['Name', 'PowerStatus']  // Chỉ lấy các trường cần thiết
+                },
+                {
+                    model: alerttypes,
+                    as: 'AlertType',
+                    attributes: ['AlertTypeName']  // Chỉ lấy AlertTypeName
+                }
+            ],
+            nest: true,
+            order: [['Timestamp', 'DESC']]  // Sắp xếp theo thời gian mới nhất trước
+        });
+
+        res.status(200).json(foundAlerts);
+    } catch (error) {
+        console.error('Error searching alerts:', error);
+        res.status(500).json({ error: error.message });
+    }
+};
