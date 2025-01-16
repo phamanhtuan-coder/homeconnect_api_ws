@@ -1,6 +1,6 @@
 const { devices, devicetypes, spaces, houses, sharedpermissions  } = require('../models');
 const wsServer = require('../ws/wsServer');
-const { sequelize } = require('sequelize'); // Thêm Sequelize vào đây
+// const { sequelize } = require('sequelize'); // Thêm Sequelize vào đây
 /**
  * Tạo thiết bị mới (Create Device)
  */
@@ -76,6 +76,9 @@ exports.toggleDevice = async (req, res) => {
 
         // 1. Kiểm tra nếu user là chủ của thiết bị
         let hasPermission = device.UserID === userId;
+        // Nếu là hệ thống (userId === 0), bỏ qua kiểm tra quyền
+        if(userId === 0)
+        hasPermission = true
 
         // 2. Nếu không phải chủ, kiểm tra sharedpermissions
         if (!hasPermission) {
