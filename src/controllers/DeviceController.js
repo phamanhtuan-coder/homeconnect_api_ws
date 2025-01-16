@@ -154,17 +154,11 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        let currentAttributes = {};
-        if (typeof device.Attribute === 'string') {
-            currentAttributes = JSON.parse(device.Attribute);
-        } else {
-            currentAttributes = device.Attribute;
-        }
+        // Tạo chuỗi JSON đúng định dạng
+        const updatedAttributes = `{"brightness":${brightness},"color":"${color}"}`;
 
-        currentAttributes.brightness = brightness;
-        currentAttributes.color = color;
-
-        await device.update({ Attribute: JSON.stringify(currentAttributes) });
+        // Cập nhật trực tiếp vào DB
+        await device.update({ Attribute: updatedAttributes });
 
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
@@ -180,6 +174,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
 
 
 
