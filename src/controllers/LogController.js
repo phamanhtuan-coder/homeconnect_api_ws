@@ -70,7 +70,7 @@ exports.getLogById = async (req, res) => {
                 },
                 {
                     model: users,
-                    as: 'User'
+                    as: 'user'
                 },
                 {
                     model: spaces,
@@ -159,7 +159,7 @@ exports.deleteLogById = async (req, res) => {
  */
 exports.getLogsByUser = async (req, res) => {
     try {
-        const userId = req.user.id;  // Lấy UserID từ token hoặc session
+        const userId = req.user.id;
 
         // Tìm tất cả logs của người dùng
         const userLogs = await logs.findAll({
