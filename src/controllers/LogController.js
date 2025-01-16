@@ -1,6 +1,5 @@
 const { logs, devices, users, spaces } = require('../models');
-const {Op,sequelize} = require('sequelize');
-
+const { Op, Sequelize } = require('sequelize');
 // Tạo log mới
 exports.createLog = async (req, res) => {
     try {
@@ -194,6 +193,24 @@ exports.getLogsByUser = async (req, res) => {
     }
 };
 
+
+
+// Lấy log gần nhất của thiết bị
+exports.getLatestLogByDevice = async (req, res) => {
+    try {
+        const latestLog = await logs.findOne({
+            where: { DeviceID: req.params.deviceId },
+            order: [['Timestamp', 'DESC']]
+        });
+        res.status(200).json(latestLog);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+
+const { Op, Sequelize } = require('sequelize');
+
 // Lấy log cập nhật thuộc tính gần nhất
 exports.getLatestUpdateAttributesLog = async (req, res) => {
     try {
@@ -203,8 +220,8 @@ exports.getLatestUpdateAttributesLog = async (req, res) => {
             where: {
                 DeviceID: deviceId,
                 [Op.and]: [
-                    literal("JSON_EXTRACT(Action, '$.fromServer') = true"),
-                    literal("JSON_EXTRACT(Action, '$.command.action') = 'updateAttributes'")
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.fromServer') = true"),
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.command.action') = 'updateAttributes'")
                 ]
             },
             order: [['Timestamp', 'DESC']]
@@ -220,7 +237,7 @@ exports.getLatestUpdateAttributesLog = async (req, res) => {
     }
 };
 
-// Lấy log bật/tắt gần nhất
+// Lấy log trạng thái bật/tắt gần nhất
 exports.getLatestToggleLog = async (req, res) => {
     try {
         const { deviceId } = req.params;
@@ -229,8 +246,8 @@ exports.getLatestToggleLog = async (req, res) => {
             where: {
                 DeviceID: deviceId,
                 [Op.and]: [
-                    literal("JSON_EXTRACT(Action, '$.fromServer') = true"),
-                    literal("JSON_EXTRACT(Action, '$.command.action') = 'toggle'")
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.fromServer') = true"),
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.command.action') = 'toggle'")
                 ]
             },
             order: [['Timestamp', 'DESC']]
@@ -246,7 +263,7 @@ exports.getLatestToggleLog = async (req, res) => {
     }
 };
 
-// Lấy log cảm biến gần nhất
+// Lấy log cảm biến (sensor) gần nhất của thiết bị
 exports.getLatestSensorLog = async (req, res) => {
     try {
         const { deviceId } = req.params;
@@ -255,8 +272,8 @@ exports.getLatestSensorLog = async (req, res) => {
             where: {
                 DeviceID: deviceId,
                 [Op.and]: [
-                    literal("JSON_EXTRACT(Action, '$.fromDevice') = true"),
-                    literal("JSON_EXTRACT(Action, '$.type') = 'smokeSensor'")
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.fromDevice') = true"),
+                    Sequelize.literal("JSON_EXTRACT(Action, '$.type') = 'smokeSensor'")
                 ]
             },
             order: [['Timestamp', 'DESC']]
@@ -267,20 +284,6 @@ exports.getLatestSensorLog = async (req, res) => {
         }
 
         res.status(200).json(latestSensorLog);
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-};
-
-
-// Lấy log gần nhất của thiết bị
-exports.getLatestLogByDevice = async (req, res) => {
-    try {
-        const latestLog = await logs.findOne({
-            where: { DeviceID: req.params.deviceId },
-            order: [['Timestamp', 'DESC']]
-        });
-        res.status(200).json(latestLog);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
