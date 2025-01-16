@@ -1,6 +1,6 @@
 const { devices, devicetypes, spaces, houses, sharedpermissions  } = require('../models');
 const wsServer = require('../ws/wsServer');
-
+const { sequelize } = require('sequelize'); // Thêm Sequelize vào đây
 /**
  * Tạo thiết bị mới (Create Device)
  */
@@ -156,7 +156,7 @@ exports.updateDeviceAttributes = async (req, res) => {
 
         // Chạy trực tiếp câu lệnh SQL để cập nhật Attribute
         const updateQuery = `UPDATE devices SET Attribute = '{"brightness":${brightness},"color":"${color}"}' WHERE DeviceID = ${id}`;
-        await sequelize.query(updateQuery);
+        await sequelize.query(updateQuery, { type: sequelize.QueryTypes.UPDATE });
 
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
