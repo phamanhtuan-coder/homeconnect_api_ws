@@ -137,9 +137,7 @@ exports.updateDeviceAttributes = async (req, res) => {
 
         return res.status(200).json({
             message: 'Cập nhật thuộc tính thiết bị thành công',
-            device: {
-                ...device.toJSON(),
-            }
+            device
         });
     } catch (error) {
         return res.status(500).json({ error: error.message });
@@ -292,7 +290,7 @@ exports.updateDeviceWifi = async (req, res) => {
         await device.update({ WifiSSID, WifiPassword });
 
         // Gửi cập nhật qua WebSocket nếu thiết bị đang trực tuyến
-        wsServer.sendToDevice(device.DeviceID, {
+        await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateWifi',
             WifiSSID,
             WifiPassword
