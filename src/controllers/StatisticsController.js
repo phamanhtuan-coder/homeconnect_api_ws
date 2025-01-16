@@ -345,7 +345,7 @@ exports.calculateAverageSensorForRange = async (req, res) => {
     }
 };
 
-// Trả về trung bình sensor từng ngày trong khoảng thời gian nhập vào
+// Tính trung bình sensor từng ngày trong khoảng thời gian nhập vào
 exports.getDailyAveragesSensorForRange = async (req, res) => {
     try {
         const { deviceId, startDate, endDate } = req.params;
@@ -354,36 +354,76 @@ exports.getDailyAveragesSensorForRange = async (req, res) => {
             return res.status(400).json({ message: 'DeviceID, StartDate và EndDate là bắt buộc.' });
         }
 
-        // Lấy thống kê loại DAILY_AVERAGE_SENSOR trong khoảng thời gian
-        const dailyStats = await statistics.findAll({
+        // Lấy logs trong khoảng thời gian cho thiết bị
+        const logsInRange = await logs.findAll({
             where: {
                 DeviceID: deviceId,
-                StatisticsTypeID: STATISTICS_TYPES.DAILY_AVERAGE_SENSOR,
-                Date: {
-                    [Op.between]: [startDate, endDate],
-                }
+                Timestamp: {
+                    [Op.between]: [
+                        new Date(`${startDate}T00:00:00.000Z`),
+                        new Date(`${endDate}T23:59:59.999Z`)
+                    ]
+                },
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                    1
+                )
             },
-            order: [['Date', 'ASC']],
+            order: [['Timestamp', 'ASC']]
         });
 
-        if (dailyStats.length === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy thống kê sensor hàng ngày trong khoảng thời gian này.' });
+        if (logsInRange.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy logs sensor cho thiết bị trong khoảng thời gian này.' });
         }
 
-        // Tạo mảng kết quả
-        const results = dailyStats.map(stat => ({
-            date: stat.Date,
-            averageGas: stat.Value.averageGas,
-            averageTemperature: stat.Value.averageTemperature,
-            averageHumidity: stat.Value.averageHumidity,
-        }));
+        // Nhóm logs theo từng ngày
+        const groupedByDate = {};
+        logsInRange.forEach(log => {
+            const dateKey = new Date(log.Timestamp).toISOString().split('T')[0]; // YYYY-MM-DD
+            if (!groupedByDate[dateKey]) {
+                groupedByDate[dateKey] = [];
+            }
+            groupedByDate[dateKey].push(log);
+        });
+
+        // Tính trung bình cho từng ngày
+        const results = Object.keys(groupedByDate).map(date => {
+            let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+            groupedByDate[date].forEach(log => {
+                let details = log.Details;
+                if (typeof details === 'string') {
+                    try {
+                        details = JSON.parse(details);
+                    } catch (e) {
+                        console.error(`Invalid JSON in Details for LogID ${log.LogID}:`, log.Details);
+                        details = null;
+                    }
+                }
+
+                if (details && details.type === 'sensorData') {
+                    if (details.gas !== undefined) totalGas += details.gas;
+                    if (details.temperature !== undefined) totalTemperature += details.temperature;
+                    if (details.humidity !== undefined) totalHumidity += details.humidity;
+                    count++;
+                }
+            });
+
+            return {
+                date,
+                averageGas: count > 0 ? totalGas / count : 0,
+                averageTemperature: count > 0 ? totalTemperature / count : 0,
+                averageHumidity: count > 0 ? totalHumidity / count : 0
+            };
+        });
 
         res.status(200).json({ dailyAverages: results });
     } catch (error) {
         console.error('Error in getDailyAveragesSensorForRange:', error);
-        res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy trung bình sensor từng ngày trong khoảng thời gian.' });
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính trung bình sensor từng ngày trong khoảng thời gian.' });
     }
 };
+
 
 
 exports.calculateDailyPowerUsage = async (req, res) => {
