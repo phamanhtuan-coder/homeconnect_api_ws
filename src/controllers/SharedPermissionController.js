@@ -13,7 +13,11 @@ exports.shareDevice = async (req, res) => {
         if (!device) return res.status(404).json({ error: 'Device not found' });
 
         // Kiểm tra xem user nhận chia sẻ có tồn tại không
-        const user = await users.findOne(sharedWithUserEmail);
+        const user = await users.findOne({
+            where: {
+                Email: sharedWithUserEmail
+            }
+        });
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         // Tạo mới quyền chia sẻ
