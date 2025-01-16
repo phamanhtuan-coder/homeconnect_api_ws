@@ -154,11 +154,9 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // Tạo chuỗi JSON đúng định dạng không có dấu \ ngoài
-        const updatedAttributes = '{"brightness":' + brightness + ',"color":"' + color + '"}';
-
-        // Cập nhật trực tiếp vào DB
-        await device.update({ Attribute: updatedAttributes });
+        // Chạy trực tiếp câu lệnh SQL để cập nhật Attribute
+        const updateQuery = `UPDATE devices SET Attribute = '{"brightness":${brightness},"color":"${color}"}' WHERE DeviceID = ${id}`;
+        await sequelize.query(updateQuery);
 
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
@@ -174,6 +172,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
 
 
 
