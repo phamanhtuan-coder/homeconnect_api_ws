@@ -6,20 +6,21 @@ const { sharedpermissions, users, devices } = require('../models');
 exports.shareDevice = async (req, res) => {
     try {
         const { deviceId } = req.params;
-        const { sharedWithUserId } = req.body;
+        const { sharedWithUserEmail} = req.body;
 
         // Kiểm tra xem thiết bị có tồn tại không
         const device = await devices.findByPk(deviceId);
         if (!device) return res.status(404).json({ error: 'Device not found' });
 
         // Kiểm tra xem user nhận chia sẻ có tồn tại không
-        const user = await users.findByPk(sharedWithUserId);
+        const user = await users.findOne(sharedWithUserEmail);
         if (!user) return res.status(404).json({ error: 'User not found' });
 
         // Tạo mới quyền chia sẻ
         const sharedPermission = await sharedpermissions.create({
             DeviceID: deviceId,
-            SharedWithUserID: sharedWithUserId
+            SharedWithUserID:user.UserID,
+            CreatedAt: new Date().toISOString(),
         });
 
         res.status(201).json({ message: 'Device shared successfully', sharedPermission });

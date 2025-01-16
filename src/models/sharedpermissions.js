@@ -15,6 +15,10 @@ module.exports = function (sequelize, DataTypes) {
     SharedWithUserID: {
       type: DataTypes.INTEGER,
       allowNull: true
+    },
+    CreatedAt:{
+      type: DataTypes.DateTime,
+      allowNull: true
     }
   }, {
     sequelize,
