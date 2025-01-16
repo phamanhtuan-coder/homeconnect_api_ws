@@ -27,12 +27,6 @@ router.get('/device/:deviceId', authenticate, getLogsByDeviceId);
 // Lọc log theo SpaceID
 router.get('/space/:spaceId', authenticate, getLogsBySpaceId);
 
-// Lấy log cụ thể theo ID
-router.get('/:id', authenticate, getLogById);
-
-// Xóa log theo ID
-router.delete('/:id', authenticate, deleteLogById);
-
 // Lấy log theo UserID
 router.get('/user/:userId', authenticate, getLogsByUser) ;
 
@@ -44,5 +38,11 @@ router.get( '/latestToggle/:deviceId', authenticate,  getLatestToggleLog) ;
 
 //Lấy log Update Attributes gần nhất
 router.get(  '/latestUpdateAttributes/:deviceId', authenticate,  getLatestUpdateAttributesLog) ;
+
+// Lấy log cụ thể theo ID
+router.get('/:id', authenticate, getLogById);
+
+// Xóa log theo ID
+router.delete('/:id', authenticate, deleteLogById);
 
 module.exports = router;
