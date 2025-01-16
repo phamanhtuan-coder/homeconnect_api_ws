@@ -1,5 +1,5 @@
 const { logs, devices, users, spaces } = require('../models');
-
+const {Op,sequelize} = require('sequelize');
 
 // Tạo log mới
 exports.createLog = async (req, res) => {
