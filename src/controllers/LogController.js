@@ -209,8 +209,6 @@ exports.getLatestLogByDevice = async (req, res) => {
 };
 
 
-const { Op, Sequelize } = require('sequelize');
-
 // Lấy log cập nhật thuộc tính gần nhất
 exports.getLatestUpdateAttributesLog = async (req, res) => {
     try {
