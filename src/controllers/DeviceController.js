@@ -161,46 +161,17 @@ exports.updateDeviceAttributes = async (req, res) => {
         // ------ OK, người dùng có quyền. Bắt đầu xử lý update attribute ------ //
 
         // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
-        const supportedAttributes = device.DeviceType.Attributes;
         // => ví dụ: { brightness: true, color: true, ... }
-
         // device.Attribute là JSON/Obj => ta đọc, cập nhật, rồi lưu
-        let currentAttributes = device.Attribute;
+        const currentAttributes = device.Attribute; // Giả sử device.Attribute kiểu object
+        currentAttributes.brightness = brightness;
+        currentAttributes.color = color;
 
-        // Nếu currentAttributes là string (dữ liệu JSON), parse thành object
-        if (typeof currentAttributes === 'string') {
-            try {
-                currentAttributes = JSON.parse(currentAttributes);
-            } catch (e) {
-                console.error('Lỗi parse JSON Attribute:', e);
-                currentAttributes = {};
-            }
-        }
 
-        // Cập nhật các thuộc tính nếu được hỗ trợ
-        if (supportedAttributes.brightness && typeof brightness !== 'undefined') {
-            currentAttributes.brightness = brightness;
-        }
-        if (supportedAttributes.color && typeof color !== 'undefined') {
-            currentAttributes.color = color;
-        }
-
-        // Cập nhật thiết bị trong DB (cột Attribute)
+        // Cập nhật thiết bị trong DB
         await device.update({ Attribute: currentAttributes });
 
-        // --- Ghi log vào bảng logs ---
-        await logs.create({
-            DeviceID: device.DeviceID,
-            Action: JSON.stringify({
-                action: 'updateAttributes',
-                brightness,
-                color,
-                performedBy: userId
-            }),
-            Timestamp: new Date()
-        });
-
-        // --- Gửi lệnh cập nhật qua WebSocket ---
+        // Gửi lệnh qua WebSocket
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
             brightness,
@@ -209,10 +180,9 @@ exports.updateDeviceAttributes = async (req, res) => {
 
         return res.status(200).json({
             message: 'Cập nhật thuộc tính thiết bị thành công',
-            updatedAttributes: currentAttributes
+            device
         });
     } catch (error) {
-        console.error('Error in updateDeviceAttributes:', error);
         return res.status(500).json({ error: error.message });
     }
 };
