@@ -160,10 +160,10 @@ exports.updateDeviceAttributes = async (req, res) => {
 
         // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
         const supportedAttributes = device.DeviceType.Attributes;
-        // vd: { brightness: true, color: true, ... }
+        // => ví dụ: { brightness: true, color: true, ... }
 
-        // device.Attribute là JSON => ta đọc, cập nhật, rồi lưu
-        const currentAttributes = device.Attribute || {};
+        // device.Attribute là JSON/Obj => ta đọc, cập nhật, rồi lưu
+        const currentAttributes = device.Attribute; // Giả sử device.Attribute kiểu object
 
         if (supportedAttributes.brightness && typeof brightness !== 'undefined') {
             currentAttributes.brightness = brightness;
@@ -172,17 +172,8 @@ exports.updateDeviceAttributes = async (req, res) => {
             currentAttributes.color = color;
         }
 
-        // Chuyển object Attribute sang JSON (có dạng {"brightness":50,"color":"#0000FF"})
-        const newAttributeJson = JSON.stringify(currentAttributes);
-
-        // Thực hiện update bằng raw query (đảm bảo format đúng như yêu cầu)
-        // CHÚ Ý: Trong thực tế cần kiểm soát injection, ở đây minh hoạ format là chính
-        const sqlQuery = `
-            UPDATE \`djwkhbynz49psk28\`.\`devices\`
-            SET \`Attribute\` = '${newAttributeJson}'
-            WHERE (\`DeviceID\` = '${id}');
-        `;
-        await sequelize.query(sqlQuery);
+        // Cập nhật thiết bị trong DB
+        await device.update({ Attribute: currentAttributes });
 
         // Gửi lệnh qua WebSocket
         await wsServer.sendToDevice(device.DeviceID, {
