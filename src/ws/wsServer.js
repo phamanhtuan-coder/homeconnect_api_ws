@@ -6,10 +6,11 @@ const {devices, logs, alerts, users} = require('../models');
 // Thêm 'alerts' để tạo cảnh báo
 const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
 
-const { toggleDevice } = require('../controllers/DeviceController');
+
 
 // Import EmailService
 const { sendEmergencyAlertEmail } = require('../services/EmailService');
+const DeviceController = require("../controllers/DeviceController");
 
 const ALERT_TYPES = {
     GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
@@ -128,19 +129,21 @@ function initWebSocket(server) {
             delete clients[deviceId];
 
             try {
-                // Gọi hàm toggleDevice để tắt thiết bị khi ngắt kết nối
-                await toggleDevice({
+                const DeviceController = require('../controllers/DeviceController');
+                await DeviceController.toggleDevice({
                     params: { id: deviceId },
                     body: { powerStatus: false },
-                    user: { id: 0 } // Hệ thống thực hiện với UserID = 0
+                    user: { id: 0 }  // Hệ thống thực hiện với UserID = 0
                 }, {
                     status: () => ({ json: () => {} })
                 });
+
                 console.log(`Thiết bị ${deviceId} đã được tắt do mất kết nối.`);
             } catch (error) {
                 console.error(`Lỗi khi tắt thiết bị ${deviceId}:`, error.message);
             }
         });
+
 
     });
 }

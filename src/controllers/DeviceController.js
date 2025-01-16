@@ -60,7 +60,7 @@ exports.linkDevice = async (req, res) => {
 /**
  * Bật/Tắt thiết bị qua WebSocket (Toggle Device Power)
  */
-exports.toggleDevice = async (req, res) => {
+const toggleDevice = async (req, res) => {
     try {
         const { id } = req.params;
         const { powerStatus } = req.body;
@@ -351,3 +351,5 @@ exports.updateDeviceWifi = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+module.exports = { toggleDevice };
