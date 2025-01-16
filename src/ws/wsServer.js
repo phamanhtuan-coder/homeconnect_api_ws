@@ -87,7 +87,7 @@ function initWebSocket(server) {
                     let alertCreated = false;
 
                     // 1) Kiểm tra gas
-                    if (typeof gasValue === 'number' && gasValue > 300) {
+                    if (typeof gasValue === 'number' && gasValue > 700) {
                         const message = `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`;
                         await createAlert(device, ALERT_TYPES.GAS_HIGH, message);
                         alertCreated = true;
