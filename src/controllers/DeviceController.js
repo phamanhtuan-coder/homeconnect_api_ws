@@ -154,9 +154,18 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // Chạy trực tiếp câu lệnh SQL để cập nhật Attribute
-        const updateQuery = `UPDATE devices SET Attribute = '{"brightness":${brightness},"color":"${color}"}' WHERE DeviceID = ${id}`;
-        await sequelize.query(updateQuery, { type: sequelize.QueryTypes.UPDATE });
+        // Cập nhật Attribute bằng cách sử dụng replacements để đảm bảo an toàn
+        const updateQuery = `
+            UPDATE devices
+            SET Attribute = :attribute
+            WHERE DeviceID = :deviceId
+        `;
+        const updatedAttribute = `{"brightness":${brightness},"color":"${color}"}`;
+
+        await sequelize.query(updateQuery, {
+            replacements: { attribute: updatedAttribute, deviceId: id },
+            type: sequelize.QueryTypes.UPDATE
+        });
 
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
@@ -172,6 +181,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
 
 
 
