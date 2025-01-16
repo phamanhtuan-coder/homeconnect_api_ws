@@ -194,8 +194,6 @@ exports.getLogsByUser = async (req, res) => {
     }
 };
 
-const { Op, literal } = require('sequelize');
-
 // Lấy log cập nhật thuộc tính gần nhất
 exports.getLatestUpdateAttributesLog = async (req, res) => {
     try {
