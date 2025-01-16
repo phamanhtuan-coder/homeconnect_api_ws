@@ -7,10 +7,9 @@ const {devices, logs, alerts, users} = require('../models');
 const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
 
 
-
 // Import EmailService
 const { sendEmergencyAlertEmail } = require('../services/EmailService');
-const DeviceController = require("../controllers/DeviceController");
+const { toggleDeviceWS} = require("../controllers/DeviceController");
 
 const ALERT_TYPES = {
     GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
@@ -129,8 +128,8 @@ function initWebSocket(server) {
             delete clients[deviceId];
 
             try {
-                const DeviceController = require('../controllers/DeviceController');
-                await DeviceController.toggleDeviceWS({
+
+                await toggleDeviceWS({
                     params: { id: deviceId },
                     body: { powerStatus: false },
                     user: { id: 0 }  // Hệ thống thực hiện với UserID = 0
