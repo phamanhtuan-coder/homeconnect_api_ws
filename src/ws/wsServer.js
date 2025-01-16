@@ -130,7 +130,7 @@ function initWebSocket(server) {
 
             try {
                 const DeviceController = require('../controllers/DeviceController');
-                await DeviceController.toggleDevice({
+                await DeviceController.toggleDeviceWS({
                     params: { id: deviceId },
                     body: { powerStatus: false },
                     user: { id: 0 }  // Hệ thống thực hiện với UserID = 0
