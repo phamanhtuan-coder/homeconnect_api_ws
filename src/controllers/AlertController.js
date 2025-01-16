@@ -222,7 +222,9 @@ exports.getAllAlertsByUser = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
-// Tìm kiếm cảnh báo theo nội dung thông báo
+
+
+//Tim kiem alerts
 exports.searchAlerts = async (req, res) => {
     try {
         const { q } = req.query;
@@ -231,11 +233,14 @@ exports.searchAlerts = async (req, res) => {
             return res.status(400).json({ error: 'Missing search query parameter "q"' });
         }
 
-        // Tìm kiếm cảnh báo với Message chứa nội dung 'q' (không phân biệt chữ hoa chữ thường)
+        // Log the query parameter for debugging purposes
+        console.log(`Searching alerts with query: ${q}`);
+
+        // Perform the search using the correct operator casing
         const foundAlerts = await alerts.findAll({
             where: {
                 Message: {
-                    [Op.Like]: `%${q}%`
+                    [Op.like]: `%${q}%` // Corrected to lowercase 'like'
                 }
             },
             attributes: ['AlertID', 'DeviceID', 'SpaceID', 'TypeID', 'Message', 'Timestamp', 'Status', 'AlertTypeID'],
@@ -243,16 +248,15 @@ exports.searchAlerts = async (req, res) => {
                 {
                     model: devices,
                     as: 'Device',
-                    attributes: ['Name', 'PowerStatus']  // Chỉ lấy các trường cần thiết
+                    attributes: ['Name', 'PowerStatus']  // Only necessary fields
                 },
                 {
                     model: alerttypes,
                     as: 'AlertType',
-                    attributes: ['AlertTypeName']  // Chỉ lấy AlertTypeName
+                    attributes: ['AlertTypeName']  // Only necessary field
                 }
             ],
-            nest: true,
-            order: [['Timestamp', 'DESC']]  // Sắp xếp theo thời gian mới nhất trước
+            order: [['Timestamp', 'DESC']]  // Sort by newest first
         });
 
         res.status(200).json(foundAlerts);
