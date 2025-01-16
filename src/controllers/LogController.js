@@ -197,13 +197,25 @@ exports.getLogsByUser = async (req, res) => {
 // Lấy log cập nhật thuộc tính gần nhất
 exports.getLatestUpdateAttributesLog = async (req, res) => {
     try {
+        const { deviceId } = req.params;
+
         const latestLog = await logs.findOne({
             where: {
-                DeviceID: req.params.deviceId,
-                Action: { [Op.like]: '%updateAttributes%' }
+                DeviceID: deviceId,
+                Action: {
+                    [Op.and]: [
+                        { fromServer: true },
+                        { 'command.action': 'updateAttributes' }
+                    ]
+                }
             },
             order: [['Timestamp', 'DESC']]
         });
+
+        if (!latestLog) {
+            return res.status(404).json({ message: 'Không tìm thấy log cập nhật thuộc tính.' });
+        }
+
         res.status(200).json(latestLog);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -213,18 +225,31 @@ exports.getLatestUpdateAttributesLog = async (req, res) => {
 // Lấy log trạng thái bật/tắt gần nhất
 exports.getLatestToggleLog = async (req, res) => {
     try {
+        const { deviceId } = req.params;
+
         const latestLog = await logs.findOne({
             where: {
-                DeviceID: req.params.deviceId,
-                Action: { [Op.like]: '%toggle%' }
+                DeviceID: deviceId,
+                Action: {
+                    [Op.and]: [
+                        { fromServer: true },
+                        { 'command.action': 'toggle' }
+                    ]
+                }
             },
             order: [['Timestamp', 'DESC']]
         });
+
+        if (!latestLog) {
+            return res.status(404).json({ message: 'Không tìm thấy log bật/tắt thiết bị.' });
+        }
+
         res.status(200).json(latestLog);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 // Lấy log gần nhất của thiết bị
 exports.getLatestLogByDevice = async (req, res) => {
@@ -247,7 +272,12 @@ exports.getLatestSensorLog = async (req, res) => {
         const latestSensorLog = await logs.findOne({
             where: {
                 DeviceID: deviceId,
-                Action: { [Op.like]: '%smokeSensor%' }
+                Action: {
+                    [Op.and]: [
+                        { fromDevice: true },
+                        { type: 'smokeSensor' }
+                    ]
+                }
             },
             order: [['Timestamp', 'DESC']]
         });
