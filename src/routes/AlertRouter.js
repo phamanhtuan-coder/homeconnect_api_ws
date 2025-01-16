@@ -36,6 +36,6 @@ router.put('/:id/resolve', authenticate, resolveAlert);
 router.delete('/:id', authenticate, deleteAlertById);
 
 // Tra cứu
-router.get('/search', alertsController.searchAlerts);
+router.get('/search',searchAlerts);
 
 module.exports = router;
