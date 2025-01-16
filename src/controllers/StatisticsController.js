@@ -705,7 +705,7 @@ exports.calculateMonthlyPowerUsage = async (req, res) => {
     }
 };
 
-// Trả về tiêu thụ điện từng ngày trong khoảng thời gian nhập vào
+// Tính năng lượng tiêu thụ từng ngày trong khoảng thời gian nhập vào
 exports.getDailyPowerUsageForRange = async (req, res) => {
     try {
         const { deviceId, startDate, endDate } = req.params;
@@ -726,7 +726,7 @@ exports.getDailyPowerUsageForRange = async (req, res) => {
             return res.status(404).json({ message: 'Không tìm thấy thiết bị.' });
         }
 
-        // Sử dụng TypeName để lấy powerRating
+        // Sử dụng TypeName hoặc TypeID để lấy powerRating
         const typeName = device.DeviceType ? device.DeviceType.TypeName : null;
         let powerRating;
         if (typeName && POWER_RATINGS[typeName]) {
@@ -737,35 +737,89 @@ exports.getDailyPowerUsageForRange = async (req, res) => {
             return res.status(400).json({ message: 'Thiết bị không có TypeName hoặc TypeID hợp lệ để lấy powerRating.' });
         }
 
-        // Lấy thống kê loại DAILY_POWER_USAGE trong khoảng thời gian
-        const dailyStats = await statistics.findAll({
+        // Lấy logs trong khoảng thời gian cho thiết bị
+        const logsInRange = await logs.findAll({
             where: {
                 DeviceID: deviceId,
-                StatisticsTypeID: STATISTICS_TYPES.DAILY_POWER_USAGE,
-                Date: {
-                    [Op.between]: [startDate, endDate],
-                }
+                Timestamp: {
+                    [Op.between]: [
+                        new Date(`${startDate}T00:00:00.000Z`),
+                        new Date(`${endDate}T23:59:59.999Z`)
+                    ]
+                },
+                [Op.and]: Sequelize.where(
+                    Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                    1
+                )
             },
-            order: [['Date', 'ASC']],
+            order: [['Timestamp', 'ASC']]
         });
 
-        if (dailyStats.length === 0) {
-            return res.status(404).json({ message: 'Không tìm thấy thống kê tiêu thụ điện hàng ngày trong khoảng thời gian này.' });
+        if (logsInRange.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy logs từ server cho thiết bị trong khoảng thời gian này.' });
         }
 
-        // Tạo mảng kết quả
-        const results = dailyStats.map(stat => ({
-            date: stat.Date,
-            energyConsumed: stat.Value.energyConsumed,
-            powerRating: stat.Value.powerRating,
-            totalOnTimeHours: stat.Value.totalOnTimeHours,
-        }));
+        // Nhóm logs theo từng ngày
+        const groupedByDate = {};
+        logsInRange.forEach(log => {
+            const dateKey = new Date(log.Timestamp).toISOString().split('T')[0]; // YYYY-MM-DD
+            if (!groupedByDate[dateKey]) {
+                groupedByDate[dateKey] = [];
+            }
+            groupedByDate[dateKey].push(log);
+        });
+
+        // Tính tổng thời gian bật và năng lượng tiêu thụ mỗi ngày
+        const results = Object.keys(groupedByDate).map(date => {
+            const logsForDate = groupedByDate[date];
+
+            // Tính tổng thời gian bật (giả sử action chứa trạng thái bật/tắt)
+            let totalOnTimeSeconds = 0;
+            let lastOnTimestamp = null;
+
+            logsForDate.forEach(log => {
+                const action = log.Action;
+                if (typeof action === 'string') {
+                    try {
+                        const actionData = JSON.parse(action);
+
+                        if (actionData.status === 'on') {
+                            lastOnTimestamp = new Date(log.Timestamp);
+                        } else if (actionData.status === 'off' && lastOnTimestamp) {
+                            const offTimestamp = new Date(log.Timestamp);
+                            totalOnTimeSeconds += (offTimestamp - lastOnTimestamp) / 1000; // Chuyển từ milliseconds sang seconds
+                            lastOnTimestamp = null;
+                        }
+
+                    } catch (e) {
+                        console.error(`Invalid JSON in Action for LogID ${log.LogID}:`, log.Action);
+                    }
+                }
+            });
+
+            // Nếu vẫn còn bật đến cuối ngày
+            if (lastOnTimestamp) {
+                const endOfDay = new Date(`${date}T23:59:59.999Z`);
+                totalOnTimeSeconds += (endOfDay - lastOnTimestamp) / 1000;
+            }
+
+            const totalOnTimeHours = totalOnTimeSeconds / 3600; // Chuyển sang giờ
+            const energyConsumed = (powerRating * totalOnTimeHours) / 1000; // kWh
+
+            return {
+                date,
+                energyConsumed: energyConsumed.toFixed(3),  // Làm tròn 3 chữ số sau dấu phẩy
+                powerRating,
+                totalOnTimeHours: totalOnTimeHours.toFixed(2)  // Làm tròn 2 chữ số sau dấu phẩy
+            };
+        });
 
         res.status(200).json({ dailyPowerUsages: results });
     } catch (error) {
         console.error('Error in getDailyPowerUsageForRange:', error);
-        res.status(500).json({ message: 'Đã xảy ra lỗi khi lấy tiêu thụ điện hàng ngày trong khoảng thời gian.' });
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính năng lượng tiêu thụ hàng ngày trong khoảng thời gian.' });
     }
 };
+
 
 
