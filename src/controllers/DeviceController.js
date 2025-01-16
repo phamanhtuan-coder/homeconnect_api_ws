@@ -58,62 +58,6 @@ exports.linkDevice = async (req, res) => {
 };
 
 
-/**
- * Bật/Tắt thiết bị qua WebSocket (Toggle Device Power)
- */
-exports.toggleDevice = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { powerStatus } = req.body;
-        const userId = req.user.id;
-
-        // Tìm thiết bị theo DeviceID và userId
-        // (Chưa kết luận là userId có quyền hay không, vì có thể userId không phải chủ)
-        const device = await devices.findOne({ where: { DeviceID: id } });
-
-        if (!device) {
-            return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
-        }
-
-        // 1. Kiểm tra nếu user là chủ của thiết bị
-        let hasPermission = device.UserID === userId;
-
-        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
-        if (!hasPermission) {
-            const permissionRecord = await sharedpermissions.findOne({
-                where: {
-                    DeviceID: id,
-                    SharedWithUserID: userId
-                }
-            });
-            // Nếu tìm thấy -> user có quyền do được chia sẻ
-            if (permissionRecord) {
-                hasPermission = true;
-            }
-        }
-
-        // Nếu user không có quyền => báo lỗi
-        if (!hasPermission) {
-            return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
-        }
-
-        // ----- OK, người dùng có quyền. Cập nhật trạng thái nguồn ----- //
-
-        // Cập nhật PowerStatus trong DB
-        await device.update({ PowerStatus: powerStatus });
-
-        // Gửi lệnh qua WebSocket
-        await wsServer.sendToDevice(id, { action: 'toggle', powerStatus }, userId);
-
-        return res.status(200).json({
-            message: `Thiết bị đã được ${powerStatus ? 'bật' : 'tắt'}`,
-            device
-        });
-    } catch (error) {
-        return res.status(500).json({ error: error.message });
-    }
-};
-
 
 /**
  * Điều chỉnh độ sáng và màu sắc (Update Brightness and Color)
