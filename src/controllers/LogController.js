@@ -238,3 +238,26 @@ exports.getLatestLogByDevice = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Lấy log cảm biến (sensor) gần nhất của thiết bị
+exports.getLatestSensorLog = async (req, res) => {
+    try {
+        const { deviceId } = req.params;
+
+        const latestSensorLog = await logs.findOne({
+            where: {
+                DeviceID: deviceId,
+                Action: { [Op.like]: '%smokeSensor%' }
+            },
+            order: [['Timestamp', 'DESC']]
+        });
+
+        if (!latestSensorLog) {
+            return res.status(404).json({ message: 'Không tìm thấy log cảm biến cho thiết bị này.' });
+        }
+
+        res.status(200).json(latestSensorLog);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

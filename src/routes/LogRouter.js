@@ -9,7 +9,8 @@ const {
     getLogsByUser,
     getLatestLogByDevice,
     getLatestToggleLog,
-    getLatestUpdateAttributesLog
+    getLatestUpdateAttributesLog,
+    getLatestSensorLog
 } = require('../controllers/LogController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
@@ -38,6 +39,9 @@ router.get( '/latestToggle/:deviceId', authenticate,  getLatestToggleLog) ;
 
 //Lấy log Update Attributes gần nhất
 router.get(  '/latestUpdateAttributes/:deviceId', authenticate,  getLatestUpdateAttributesLog) ;
+
+//Lấy log smoke sensor gần nhất
+router.get(  '/latestSensor/:deviceId', authenticate,  getLatestSensorLog ) ;
 
 // Lấy log cụ thể theo ID
 router.get('/:id', authenticate, getLogById);
