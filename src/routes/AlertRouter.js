@@ -23,6 +23,9 @@ router.get('/', authenticate, getAllAlerts);
 //Lấy tất cả cảnh báo của người dùng (bao gồm thiết bị được chia sẻ)
 router.get('/getAllByUser', authenticate,  getAllAlertsByUser);
 
+// Tra cứu
+router.get('/search',searchAlerts);
+
 // Lấy cảnh báo theo ID (GET)
 router.get('/:id', authenticate, getAlertById);
 
@@ -35,7 +38,6 @@ router.put('/:id/resolve', authenticate, resolveAlert);
 // Xóa cảnh báo (DELETE)
 router.delete('/:id', authenticate, deleteAlertById);
 
-// Tra cứu
-router.get('/search',searchAlerts);
+
 
 module.exports = router;
