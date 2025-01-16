@@ -154,8 +154,8 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // Tạo chuỗi JSON đúng định dạng không có dấu nháy ngoài
-        const updatedAttributes = `{"brightness":${brightness},"color":"${color}"}`;
+        // Tạo chuỗi JSON đúng định dạng không có dấu \ ngoài
+        const updatedAttributes = '{"brightness":' + brightness + ',"color":"' + color + '"}';
 
         // Cập nhật trực tiếp vào DB
         await device.update({ Attribute: updatedAttributes });
@@ -174,6 +174,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         return res.status(500).json({ error: error.message });
     }
 };
+
 
 
 
