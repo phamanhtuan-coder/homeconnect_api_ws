@@ -188,3 +188,48 @@ exports.getLogsByUser = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+// Lấy log cập nhật thuộc tính gần nhất
+exports.getLatestUpdateAttributesLog = async (req, res) => {
+    try {
+        const latestLog = await logs.findOne({
+            where: {
+                DeviceID: req.params.deviceId,
+                Action: { [Op.like]: '%updateAttributes%' }
+            },
+            order: [['Timestamp', 'DESC']]
+        });
+        res.status(200).json(latestLog);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Lấy log trạng thái bật/tắt gần nhất
+exports.getLatestToggleLog = async (req, res) => {
+    try {
+        const latestLog = await logs.findOne({
+            where: {
+                DeviceID: req.params.deviceId,
+                Action: { [Op.like]: '%toggle%' }
+            },
+            order: [['Timestamp', 'DESC']]
+        });
+        res.status(200).json(latestLog);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+// Lấy log gần nhất của thiết bị
+exports.getLatestLogByDevice = async (req, res) => {
+    try {
+        const latestLog = await logs.findOne({
+            where: { DeviceID: req.params.deviceId },
+            order: [['Timestamp', 'DESC']]
+        });
+        res.status(200).json(latestLog);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+};

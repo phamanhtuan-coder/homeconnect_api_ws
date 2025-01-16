@@ -6,10 +6,12 @@ const {
     deleteLogById,
     getLogsByDeviceId,
     getLogsBySpaceId,
-    getLogsByUser
+    getLogsByUser,
+    getLatestLogByDevice,
+    getLatestToggleLog,
+    getLatestUpdateAttributesLog
 } = require('../controllers/LogController');
 const { authenticate } = require('../middlewares/authMiddleware');
-const {getDeviceById} = require("../controllers/DeviceController");
 
 const router = express.Router();
 
@@ -33,5 +35,14 @@ router.delete('/:id', authenticate, deleteLogById);
 
 // Lấy log theo UserID
 router.get('/user/:userId', authenticate, getLogsByUser) ;
+
+//Lấy log gần nhất
+router.get('/latest/:deviceId', authenticate,getLatestLogByDevice) ;
+
+//Lấy log toggle gần nhất
+router.get( '/latestToggle/:deviceId', authenticate,  getLatestToggleLog) ;
+
+//Lấy log Update Attributes gần nhất
+router.get(  '/latestUpdateAttributes/:deviceId', authenticate,  getLatestUpdateAttributesLog) ;
 
 module.exports = router;
