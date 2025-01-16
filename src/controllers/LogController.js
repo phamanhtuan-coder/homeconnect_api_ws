@@ -103,7 +103,7 @@ exports.getLogsByDeviceId = async (req, res) => {
                 },
                 {
                     model: users,
-                    as: 'User'
+                    as: 'user'
                 }
             ]
         });
