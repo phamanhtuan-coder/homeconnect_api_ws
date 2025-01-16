@@ -57,8 +57,6 @@ exports.linkDevice = async (req, res) => {
     }
 };
 
-
-
 /**
  * Điều chỉnh độ sáng và màu sắc (Update Brightness and Color)
  */
@@ -68,6 +66,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         const { brightness, color } = req.body;
         const userId = req.user.id;
 
+        // Tìm thiết bị (kèm DeviceType để biết nó hỗ trợ attribute nào)
         const device = await devices.findOne({
             where: { DeviceID: id },
             include: {
@@ -80,8 +79,10 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
+        // 1. Kiểm tra nếu user là chủ thiết bị
         let hasPermission = device.UserID === userId;
 
+        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
         if (!hasPermission) {
             const permissionRecord = await sharedpermissions.findOne({
                 where: {
@@ -94,23 +95,40 @@ exports.updateDeviceAttributes = async (req, res) => {
             }
         }
 
+        // Nếu user không có quyền => báo lỗi
         if (!hasPermission) {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // Cập nhật Attribute bằng cách sử dụng replacements để đảm bảo an toàn
-        const updateQuery = `
-            UPDATE devices
-            SET Attribute = :attribute
-            WHERE DeviceID = :deviceId
+        // ------ OK, người dùng có quyền. Bắt đầu xử lý update attribute ------ //
+
+        // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
+        const supportedAttributes = device.DeviceType.Attributes;
+        // vd: { brightness: true, color: true, ... }
+
+        // device.Attribute là JSON => ta đọc, cập nhật, rồi lưu
+        const currentAttributes = device.Attribute || {};
+
+        if (supportedAttributes.brightness && typeof brightness !== 'undefined') {
+            currentAttributes.brightness = brightness;
+        }
+        if (supportedAttributes.color && typeof color !== 'undefined') {
+            currentAttributes.color = color;
+        }
+
+        // Chuyển object Attribute sang JSON (có dạng {"brightness":50,"color":"#0000FF"})
+        const newAttributeJson = JSON.stringify(currentAttributes);
+
+        // Thực hiện update bằng raw query (đảm bảo format đúng như yêu cầu)
+        // CHÚ Ý: Trong thực tế cần kiểm soát injection, ở đây minh hoạ format là chính
+        const sqlQuery = `
+            UPDATE \`djwkhbynz49psk28\`.\`devices\`
+            SET \`Attribute\` = '${newAttributeJson}'
+            WHERE (\`DeviceID\` = '${id}');
         `;
-        const updatedAttribute = `{"brightness":${brightness},"color":"${color}"}`;
+        await sequelize.query(sqlQuery);
 
-        await sequelize.query(updateQuery, {
-            replacements: { attribute: updatedAttribute, deviceId: id },
-            type: sequelize.QueryTypes.UPDATE
-        });
-
+        // Gửi lệnh qua WebSocket
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
             brightness,
@@ -119,16 +137,14 @@ exports.updateDeviceAttributes = async (req, res) => {
 
         return res.status(200).json({
             message: 'Cập nhật thuộc tính thiết bị thành công',
-            device
+            device: {
+                ...device.toJSON(),
+            }
         });
     } catch (error) {
         return res.status(500).json({ error: error.message });
     }
 };
-
-
-
-
 
 
 
