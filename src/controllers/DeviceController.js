@@ -124,7 +124,6 @@ exports.updateDeviceAttributes = async (req, res) => {
         const { brightness, color } = req.body;
         const userId = req.user.id;
 
-        // Tìm thiết bị (kèm DeviceType để biết nó hỗ trợ attribute nào)
         const device = await devices.findOne({
             where: { DeviceID: id },
             include: {
@@ -137,10 +136,8 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
-        // 1. Kiểm tra nếu user là chủ thiết bị
         let hasPermission = device.UserID === userId;
 
-        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
         if (!hasPermission) {
             const permissionRecord = await sharedpermissions.findOne({
                 where: {
@@ -153,25 +150,22 @@ exports.updateDeviceAttributes = async (req, res) => {
             }
         }
 
-        // Nếu user không có quyền => báo lỗi
         if (!hasPermission) {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // ------ OK, người dùng có quyền. Bắt đầu xử lý update attribute ------ //
+        let currentAttributes = {};
+        if (typeof device.Attribute === 'string') {
+            currentAttributes = JSON.parse(device.Attribute);
+        } else {
+            currentAttributes = device.Attribute;
+        }
 
-        // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
-        // => ví dụ: { brightness: true, color: true, ... }
-        // device.Attribute là JSON/Obj => ta đọc, cập nhật, rồi lưu
-        const currentAttributes = device.Attribute; // Giả sử device.Attribute kiểu object
         currentAttributes.brightness = brightness;
         currentAttributes.color = color;
 
+        await device.update({ Attribute: JSON.stringify(currentAttributes) });
 
-        // Cập nhật thiết bị trong DB
-        await device.update({ Attribute: currentAttributes });
-
-        // Gửi lệnh qua WebSocket
         await wsServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
             brightness,
