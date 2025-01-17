@@ -8,7 +8,8 @@ const {
     getSharedWithDevices,
     getAllDevicesUserCanAccess,
     resetPassword,
-    changePassword
+    changePassword,
+    confirmEmail
 } = require('../controllers/UserController');
 const { authenticate } = require('../middlewares/authMiddleware');
 
@@ -28,6 +29,9 @@ router.delete('/:id', authenticate, deleteUserById);
 
 // Lấy tất cả thiết bị mà người dùng có quyền truy cập (gồm sở hữu và được chia sẻ)
 router.get('/getAllUserDevices', authenticate, getAllDevicesUserCanAccess);
+
+// Route để xác thực email
+router.post('/confirm-email', confirmEmail);
 
 // Lấy thiết bị mà người dùng đã chia sẻ
 router.get('/:id/shared', authenticate, getUserSharedDevices);

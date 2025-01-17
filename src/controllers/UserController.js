@@ -285,3 +285,36 @@ exports.changePassword = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+// Hàm xác thực email bằng cách cập nhật EmailVerified thành true
+exports.confirmEmail = async (req, res) => {
+    const { email } = req.body;
+
+    // 1. Kiểm tra dữ liệu đầu vào
+    if (!email) {
+        return res.status(400).json({ success: false, message: 'Email không được để trống.' });
+    }
+
+    try {
+        // 2. Tìm người dùng theo email
+        const user = await users.findOne({ where: { Email: email } });
+
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy người dùng với email này.' });
+        }
+
+        // 3. Kiểm tra nếu email đã được xác thực
+        if (user.EmailVerified) {
+            return res.status(200).json({ success: true, message: 'Email đã được xác thực trước đó.' });
+        }
+
+        // 4. Cập nhật EmailVerified thành true
+        await user.update({ EmailVerified: true });
+
+        return res.status(200).json({ success: true, message: 'Xác thực email thành công.' });
+    } catch (error) {
+        console.error('Lỗi khi xác thực email:', error);
+        return res.status(500).json({ success: false, message: 'Đã xảy ra lỗi. Vui lòng thử lại sau.' });
+    }
+};
