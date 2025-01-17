@@ -193,3 +193,35 @@ exports.getDevicesInSpace = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+/**
+ * Lấy tên không gian (Get Space Name)
+ */
+exports.getSpaceDetail = async (req, res) => {
+    try {
+        const { id } = req.params; // ID của không gian từ đường dẫn
+        const userId = req.user.id; // ID người dùng đã được xác thực
+
+        // Tìm không gian kèm thông tin nhà để kiểm tra quyền sở hữu
+        const space = await spaces.findOne({
+            where: { SpaceID: id, IsDeleted: false }, // Lọc không gian chưa bị xóa mềm
+            include: {
+                model: houses,
+                as: 'House',
+                where: { UserID: userId }, // Đảm bảo nhà thuộc về người dùng hiện tại
+                attributes: [] // Không cần lấy các trường từ bảng houses
+            },
+            attributes: ['Name'] // Chỉ chọn trường 'Name' từ bảng spaces
+        });
+
+        if (!space) {
+            return res.status(404).json({ success: false, message: 'Không tìm thấy không gian hoặc bạn không có quyền truy cập.' });
+        }
+
+        // Trả về chỉ tên của không gian
+        return res.status(200).json({ success: true, name: space.Name });
+    } catch (error) {
+        console.error('Lỗi khi lấy tên không gian:', error);
+        return res.status(500).json({ success: false, message: 'Đã xảy ra lỗi khi lấy tên không gian.' });
+    }
+};
