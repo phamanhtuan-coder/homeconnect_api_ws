@@ -821,5 +821,558 @@ exports.getDailyPowerUsageForRange = async (req, res) => {
     }
 };
 
+// Thống kê theo phòng
 
+
+// Tính trung bình sensor cho cả phòng theo ngày
+exports.calculateRoomAverageSensor = async (req, res) => {
+    try {
+        const { spaceId, date } = req.body;
+        if (!spaceId || !date) {
+            return res.status(400).json({ message: 'SpaceID và Date là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [
+                            new Date(`${date}T00:00:00.000Z`),
+                            new Date(`${date}T23:59:59.999Z`)
+                        ]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                        1
+                    )
+                }
+            });
+
+            Logs.forEach(log => {
+                let details = log.Details;
+                if (typeof details === 'string') details = JSON.parse(details);
+                if (details && details.type === 'sensorData') {
+                    totalGas += details.gas || 0;
+                    totalTemperature += details.temperature || 0;
+                    totalHumidity += details.humidity || 0;
+                    count++;
+                }
+            });
+        }
+
+        const averageGas = count > 0 ? totalGas / count : 0;
+        const averageTemperature = count > 0 ? totalTemperature / count : 0;
+        const averageHumidity = count > 0 ? totalHumidity / count : 0;
+
+        await statistics.create({
+            SpaceID: spaceId,
+            Type: 'Room Daily Average Sensor',
+            Date: date,
+            Value: { averageGas, averageTemperature, averageHumidity }
+        });
+
+        res.status(200).json({
+            message: 'Trung bình sensor cho phòng đã được tính và lưu thành công.',
+            data: { averageGas, averageTemperature, averageHumidity }
+        });
+    } catch (error) {
+        console.error('Error in calculateRoomAverageSensor:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+// Tính tổng điện năng tiêu thụ cho phòng theo ngày
+exports.calculateRoomPowerUsage = async (req, res) => {
+    try {
+        const { spaceId, date } = req.body;
+        if (!spaceId || !date) {
+            return res.status(400).json({ message: 'SpaceID và Date là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalEnergyConsumed = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [
+                            new Date(`${date}T00:00:00.000Z`),
+                            new Date(`${date}T23:59:59.999Z`)
+                        ]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                        1
+                    )
+                }
+            });
+
+            const totalOnTimeHours = calculateTotalPowerOnTime(Logs, date, date);
+            const powerRating = device.TypeID ? POWER_RATINGS_BY_TYPEID[device.TypeID] : 0;
+            totalEnergyConsumed += (powerRating * totalOnTimeHours) / 1000;
+        }
+
+        await statistics.create({
+            SpaceID: spaceId,
+            Type: 'Room Daily Power Usage',
+            Date: date,
+            Value: { totalEnergyConsumed }
+        });
+
+        res.status(200).json({
+            message: 'Tiêu thụ điện năng của phòng đã được tính và lưu thành công.',
+            data: { totalEnergyConsumed }
+        });
+    } catch (error) {
+        console.error('Error in calculateRoomPowerUsage:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+// Tính trung bình sensor cho phòng theo khoảng thời gian
+exports.calculateRoomAverageSensorForRange = async (req, res) => {
+    try {
+        const { spaceId, startDate, endDate } = req.body;
+        if (!spaceId || !startDate || !endDate) {
+            return res.status(400).json({ message: 'SpaceID, StartDate và EndDate là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [
+                            new Date(`${startDate}T00:00:00.000Z`),
+                            new Date(`${endDate}T23:59:59.999Z`)
+                        ]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                        1
+                    )
+                }
+            });
+
+            Logs.forEach(log => {
+                let details = log.Details;
+                if (typeof details === 'string') details = JSON.parse(details);
+                if (details && details.type === 'sensorData') {
+                    totalGas += details.gas || 0;
+                    totalTemperature += details.temperature || 0;
+                    totalHumidity += details.humidity || 0;
+                    count++;
+                }
+            });
+        }
+
+        const averageGas = count > 0 ? totalGas / count : 0;
+        const averageTemperature = count > 0 ? totalTemperature / count : 0;
+        const averageHumidity = count > 0 ? totalHumidity / count : 0;
+
+        res.status(200).json({
+            message: 'Trung bình sensor theo khoảng thời gian đã được tính.',
+            data: { averageGas, averageTemperature, averageHumidity }
+        });
+    } catch (error) {
+        console.error('Error in calculateRoomAverageSensorForRange:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.calculateWeeklyRoomAverageSensor = async (req, res) => {
+    try {
+        const { spaceId } = req.body;
+        if (!spaceId) {
+            return res.status(400).json({ message: 'SpaceID là bắt buộc.' });
+        }
+
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [lastWeek, today]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                        1
+                    )
+                }
+            });
+
+            Logs.forEach(log => {
+                let details = JSON.parse(log.Details);
+                if (details && details.type === 'sensorData') {
+                    totalGas += details.gas || 0;
+                    totalTemperature += details.temperature || 0;
+                    totalHumidity += details.humidity || 0;
+                    count++;
+                }
+            });
+        }
+
+        const averageGas = count > 0 ? totalGas / count : 0;
+        const averageTemperature = count > 0 ? totalTemperature / count : 0;
+        const averageHumidity = count > 0 ? totalHumidity / count : 0;
+
+        res.status(200).json({
+            message: 'Trung bình sensor hàng tuần đã được tính.',
+            data: { averageGas, averageTemperature, averageHumidity }
+        });
+    } catch (error) {
+        console.error('Error in calculateWeeklyRoomAverageSensor:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.calculateMonthlyRoomAverageSensor = async (req, res) => {
+    try {
+        const { spaceId } = req.body;
+        if (!spaceId) {
+            return res.status(400).json({ message: 'SpaceID là bắt buộc.' });
+        }
+
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [firstDayOfMonth, today]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                        1
+                    )
+                }
+            });
+
+            Logs.forEach(log => {
+                let details = JSON.parse(log.Details);
+                if (details && details.type === 'sensorData') {
+                    totalGas += details.gas || 0;
+                    totalTemperature += details.temperature || 0;
+                    totalHumidity += details.humidity || 0;
+                    count++;
+                }
+            });
+        }
+
+        const averageGas = count > 0 ? totalGas / count : 0;
+        const averageTemperature = count > 0 ? totalTemperature / count : 0;
+        const averageHumidity = count > 0 ? totalHumidity / count : 0;
+
+        res.status(200).json({
+            message: 'Trung bình sensor hàng tháng đã được tính.',
+            data: { averageGas, averageTemperature, averageHumidity }
+        });
+    } catch (error) {
+        console.error('Error in calculateMonthlyRoomAverageSensor:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.calculateWeeklyRoomPowerUsage = async (req, res) => {
+    try {
+        const { spaceId } = req.body;
+        if (!spaceId) {
+            return res.status(400).json({ message: 'SpaceID là bắt buộc.' });
+        }
+
+        const today = new Date();
+        const lastWeek = new Date();
+        lastWeek.setDate(today.getDate() - 7);
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalEnergyConsumed = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [lastWeek, today]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                        1
+                    )
+                }
+            });
+
+            const totalOnTimeHours = calculateTotalPowerOnTime(Logs, lastWeek, today);
+            const powerRating = device.TypeID ? POWER_RATINGS_BY_TYPEID[device.TypeID] : 0;
+            totalEnergyConsumed += (powerRating * totalOnTimeHours) / 1000;
+        }
+
+        res.status(200).json({
+            message: 'Tiêu thụ điện năng hàng tuần đã được tính.',
+            data: { totalEnergyConsumed }
+        });
+    } catch (error) {
+        console.error('Error in calculateWeeklyRoomPowerUsage:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.calculateMonthlyRoomPowerUsage = async (req, res) => {
+    try {
+        const { spaceId } = req.body;
+        if (!spaceId) {
+            return res.status(400).json({ message: 'SpaceID là bắt buộc.' });
+        }
+
+        const today = new Date();
+        const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalEnergyConsumed = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [firstDayOfMonth, today]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                        1
+                    )
+                }
+            });
+
+            const totalOnTimeHours = calculateTotalPowerOnTime(Logs, firstDayOfMonth, today);
+            const powerRating = device.TypeID ? POWER_RATINGS_BY_TYPEID[device.TypeID] : 0;
+            totalEnergyConsumed += (powerRating * totalOnTimeHours) / 1000;
+        }
+
+        res.status(200).json({
+            message: 'Tiêu thụ điện năng hàng tháng đã được tính.',
+            data: { totalEnergyConsumed }
+        });
+    } catch (error) {
+        console.error('Error in calculateMonthlyRoomPowerUsage:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.calculateRoomPowerUsageForRange = async (req, res) => {
+    try {
+        const { spaceId, startDate, endDate } = req.body;
+        if (!spaceId || !startDate || !endDate) {
+            return res.status(400).json({ message: 'SpaceID, StartDate và EndDate là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        let totalEnergyConsumed = 0;
+
+        for (const device of devicesInRoom) {
+            const Logs = await logs.findAll({
+                where: {
+                    DeviceID: device.DeviceID,
+                    Timestamp: {
+                        [Op.between]: [new Date(startDate), new Date(endDate)]
+                    },
+                    [Op.and]: Sequelize.where(
+                        Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                        1
+                    )
+                }
+            });
+
+            const totalOnTimeHours = calculateTotalPowerOnTime(Logs, startDate, endDate);
+            const powerRating = device.TypeID ? POWER_RATINGS_BY_TYPEID[device.TypeID] : 0;
+            totalEnergyConsumed += (powerRating * totalOnTimeHours) / 1000;
+        }
+
+        res.status(200).json({
+            message: 'Tiêu thụ điện năng theo khoảng ngày đã được tính.',
+            data: { totalEnergyConsumed }
+        });
+    } catch (error) {
+        console.error('Error in calculateRoomPowerUsageForRange:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.getDailyRoomAverageSensorForRange = async (req, res) => {
+    try {
+        const { spaceId, startDate, endDate } = req.body;
+        if (!spaceId || !startDate || !endDate) {
+            return res.status(400).json({ message: 'SpaceID, StartDate và EndDate là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        const results = [];
+        const currentDate = new Date(startDate);
+
+        while (currentDate <= new Date(endDate)) {
+            let totalGas = 0, totalTemperature = 0, totalHumidity = 0, count = 0;
+
+            for (const device of devicesInRoom) {
+                const Logs = await logs.findAll({
+                    where: {
+                        DeviceID: device.DeviceID,
+                        Timestamp: {
+                            [Op.between]: [
+                                new Date(currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z'),
+                                new Date(currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z')
+                            ]
+                        },
+                        [Op.and]: Sequelize.where(
+                            Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromDevice: true })),
+                            1
+                        )
+                    }
+                });
+
+                Logs.forEach(log => {
+                    let details = log.Details;
+                    if (typeof details === 'string') details = JSON.parse(details);
+                    if (details && details.type === 'sensorData') {
+                        totalGas += details.gas || 0;
+                        totalTemperature += details.temperature || 0;
+                        totalHumidity += details.humidity || 0;
+                        count++;
+                    }
+                });
+            }
+
+            results.push({
+                date: currentDate.toISOString().split('T')[0],
+                averageGas: count > 0 ? totalGas / count : 0,
+                averageTemperature: count > 0 ? totalTemperature / count : 0,
+                averageHumidity: count > 0 ? totalHumidity / count : 0
+            });
+
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        res.status(200).json({
+            message: 'Dữ liệu trung bình sensor từng ngày đã được tính.',
+            data: results
+        });
+    } catch (error) {
+        console.error('Error in getDailyRoomAverageSensorForRange:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
+
+exports.getDailyRoomPowerUsageForRange = async (req, res) => {
+    try {
+        const { spaceId, startDate, endDate } = req.params;
+
+        if (!spaceId || !startDate || !endDate) {
+            return res.status(400).json({ message: 'SpaceID, StartDate và EndDate là bắt buộc.' });
+        }
+
+        const devicesInRoom = await devices.findAll({ where: { SpaceID: spaceId } });
+        if (devicesInRoom.length === 0) {
+            return res.status(404).json({ message: 'Không tìm thấy thiết bị trong phòng này.' });
+        }
+
+        const results = [];
+        const currentDate = new Date(startDate);
+
+        while (currentDate <= new Date(endDate)) {
+            let totalEnergyConsumed = 0;
+
+            for (const device of devicesInRoom) {
+                const Logs = await logs.findAll({
+                    where: {
+                        DeviceID: device.DeviceID,
+                        Timestamp: {
+                            [Op.between]: [
+                                new Date(currentDate.toISOString().split('T')[0] + 'T00:00:00.000Z'),
+                                new Date(currentDate.toISOString().split('T')[0] + 'T23:59:59.999Z')
+                            ]
+                        },
+                        [Op.and]: Sequelize.where(
+                            Sequelize.fn('JSON_CONTAINS', Sequelize.col('Action'), JSON.stringify({ fromServer: true })),
+                            1
+                        )
+                    }
+                });
+
+                const totalOnTimeHours = calculateTotalPowerOnTime(Logs, currentDate, currentDate);
+                const powerRating = device.TypeID ? POWER_RATINGS_BY_TYPEID[device.TypeID] : 0;
+                totalEnergyConsumed += (powerRating * totalOnTimeHours) / 1000;
+            }
+
+            results.push({
+                date: currentDate.toISOString().split('T')[0],
+                totalEnergyConsumed: totalEnergyConsumed.toFixed(3)  // Làm tròn 3 chữ số
+            });
+
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+
+        res.status(200).json({
+            message: 'Danh sách tiêu thụ điện năng hàng ngày đã được tính.',
+            data: results
+        });
+    } catch (error) {
+        console.error('Error in getDailyRoomPowerUsageForRange:', error);
+        res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
+    }
+};
 

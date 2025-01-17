@@ -37,7 +37,7 @@ exports.createDevice = async (req, res) => {
 exports.linkDevice = async (req, res) => {
     try {
         const userId = req.user.id;
-        const { deviceId, spaceId, deviceName } = req.body;  // Added spaceId and deviceName to the body extraction
+        const { deviceId, spaceId, deviceName } = req.body;
 
         const device = await devices.findByPk(deviceId);
         if (!device) {
