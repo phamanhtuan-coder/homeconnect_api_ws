@@ -85,13 +85,14 @@ exports.updateUserById = async (req, res) => {
             Name: req.body.Name,
             Email: req.body.Email,
             Phone: req.body.Phone,
+            ProfileImage:req.body.ProfileImage,
             Address: req.body.Address,
             DateOfBirth: req.body.DateOfBirth
         };
 
         // Cập nhật người dùng (Không gửi updatedAt vào)
         await user.update(updateData, {
-            fields: ['Name', 'Email', 'Phone', 'Address', 'DateOfBirth']  // Chỉ cập nhật các trường cần thiết
+            fields: ['Name', 'Email', 'Phone','ProfileImage', 'Address', 'DateOfBirth']  // Chỉ cập nhật các trường cần thiết
         });
 
         res.status(200).json({
