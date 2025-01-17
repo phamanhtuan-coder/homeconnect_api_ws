@@ -311,7 +311,11 @@ exports.confirmEmail = async (req, res) => {
         }
 
         // 4. Cập nhật EmailVerified thành true
-        await user.update({ EmailVerified: true });
+        await user.update({
+            EmailVerified: true
+        }, {
+            fields: ['EmailVerified']
+        });
 
         return res.status(200).json({ success: true, message: 'Xác thực email thành công.' });
     } catch (error) {
