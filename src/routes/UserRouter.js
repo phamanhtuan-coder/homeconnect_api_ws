@@ -31,7 +31,7 @@ router.delete('/:id', authenticate, deleteUserById);
 router.get('/getAllUserDevices', authenticate, getAllDevicesUserCanAccess);
 
 // Route để xác thực email
-router.post('/confirm-email', confirmEmail);
+router.post('/confirm-email',authenticate, confirmEmail);
 
 // Lấy thiết bị mà người dùng đã chia sẻ
 router.get('/:id/shared', authenticate, getUserSharedDevices);
