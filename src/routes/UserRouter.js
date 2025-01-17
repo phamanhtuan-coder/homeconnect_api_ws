@@ -18,6 +18,12 @@ const router = express.Router();
 // Lấy tất cả người dùng (yêu cầu auth)
 router.get('/', authenticate, getAllUsers);
 
+// Lấy tất cả thiết bị mà người dùng có quyền truy cập (gồm sở hữu và được chia sẻ)
+router.get('/getAllUserDevices', authenticate, getAllDevicesUserCanAccess);
+
+// Route để xác thực email
+router.post('/confirm-email',authenticate, confirmEmail);
+
 // Lấy thông tin người dùng theo ID
 router.get('/:id', authenticate, getUserById);
 
@@ -27,11 +33,7 @@ router.put('/:id', authenticate, updateUserById);
 // Xóa người dùng
 router.delete('/:id', authenticate, deleteUserById);
 
-// Lấy tất cả thiết bị mà người dùng có quyền truy cập (gồm sở hữu và được chia sẻ)
-router.get('/getAllUserDevices', authenticate, getAllDevicesUserCanAccess);
 
-// Route để xác thực email
-router.post('/confirm-email',authenticate, confirmEmail);
 
 // Lấy thiết bị mà người dùng đã chia sẻ
 router.get('/:id/shared', authenticate, getUserSharedDevices);
