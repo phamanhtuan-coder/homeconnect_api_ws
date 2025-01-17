@@ -1252,7 +1252,7 @@ exports.calculateRoomPowerUsageForRange = async (req, res) => {
 
 exports.getDailyRoomAverageSensorForRange = async (req, res) => {
     try {
-        const { spaceId, startDate, endDate } = req.body;
+        const { spaceId, startDate, endDate } = req.params;
         if (!spaceId || !startDate || !endDate) {
             return res.status(400).json({ message: 'SpaceID, StartDate và EndDate là bắt buộc.' });
         }
@@ -1316,6 +1316,7 @@ exports.getDailyRoomAverageSensorForRange = async (req, res) => {
         res.status(500).json({ message: 'Đã xảy ra lỗi khi tính toán.' });
     }
 };
+
 
 exports.getDailyRoomPowerUsageForRange = async (req, res) => {
     try {
