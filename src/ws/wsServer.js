@@ -87,14 +87,14 @@ function initWebSocket(server) {
                     let alertCreated = false;
 
                     // 1) Kiểm tra gas
-                    if (typeof gasValue === 'number' && gasValue > 700) {
+                    if (typeof gasValue === 'number' && gasValue > 500) {
                         const message = `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`;
                         await createAlert(device, ALERT_TYPES.GAS_HIGH, message);
                         alertCreated = true;
                     }
 
                     // 2) Kiểm tra nhiệt độ
-                    if (typeof tempValue === 'number' && tempValue > 50) {
+                    if (typeof tempValue === 'number' && tempValue > 40) {
                         const message = `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`;
                         await createAlert(device, ALERT_TYPES.TEMP_HIGH, message);
                         alertCreated = true;
