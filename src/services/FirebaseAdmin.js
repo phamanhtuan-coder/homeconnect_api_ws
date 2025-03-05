@@ -1,24 +1,18 @@
 const admin = require('firebase-admin');
+const fs = require('fs');
+const path = require('path');
 
-// Kiểm tra biến môi trường
-if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-    console.error('Biến môi trường FIREBASE_SERVICE_ACCOUNT không được thiết lập.');
+const serviceAccountPath = path.join(__dirname, '../config/homeconnect-teamiot-firebase-adminsdk-7r0kf-6ccaeb51a8.json');
+
+if (!fs.existsSync(serviceAccountPath)) {
+    console.error('Không tìm thấy file service account:', serviceAccountPath);
     process.exit(1);
 }
 
-let serviceAccount;
+const serviceAccount = JSON.parse(fs.readFileSync(serviceAccountPath, 'utf8'));
 
-try {
-    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-} catch (error) {
-    console.error('Lỗi khi parse FIREBASE_SERVICE_ACCOUNT:', error);
-    process.exit(1);
-}
-
-// Initialize Firebase Admin SDK
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
-    // Bạn có thể thêm các tùy chọn khác nếu cần
 });
 
 console.log('Firebase Admin initialized successfully.');

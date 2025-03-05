@@ -9,7 +9,9 @@ const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
 
 // Import EmailService
 const { sendEmergencyAlertEmail } = require('../services/EmailService');
-const { toggleDevice} = require("../controllers/DeviceController");
+function getToggleDevice() {
+    return require("../controllers/DeviceController").toggleDevice;
+}
 
 const ALERT_TYPES = {
     GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
@@ -128,7 +130,7 @@ function initWebSocket(server) {
             delete clients[deviceId];
 
             try {
-
+                const toggleDevice = getToggleDevice();
                 await toggleDevice({
                     params: { id: deviceId },
                     body: { powerStatus: false },

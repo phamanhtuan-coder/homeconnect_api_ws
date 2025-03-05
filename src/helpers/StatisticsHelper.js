@@ -57,6 +57,6 @@ const calculateTotalPowerOnTime = (logs, startDate, endDate) => {
 
 
 
-export {
+module.exports = {
     calculateTotalPowerOnTime
 };
