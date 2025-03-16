@@ -7,7 +7,7 @@
 const app = require('../app');
 const debug = require('debug')('homeconnect-api-ws:server');
 const http = require('http');
-const { initWebSocket } = require('../src/ws/wsServer'); // Import hàm khởi tạo WebSocket
+const { initSocketIO } = require('../src/ws/socketServer'); // Updated import
 require('dotenv').config(); // Load environment variables
 
 /**
@@ -22,14 +22,14 @@ app.set('port', port);
  */
 
 const server = http.createServer(app);
-server.keepAliveTimeout = 60000;  // Tăng timeout lên 60 giây
+server.keepAliveTimeout = 60000;  // Increase timeout to 60 seconds
 server.headersTimeout = 65000;
 
 /**
- * Initialize WebSocket Server
+ * Initialize Socket.IO Server
  */
 
-initWebSocket(server);
+initSocketIO(server); // Updated function call
 
 /**
  * Listen on provided port, on all network interfaces.

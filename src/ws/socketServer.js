@@ -1,11 +1,9 @@
-const WebSocket = require('ws');
+const { Server } = require('socket.io');
 const admin = require('../services/FirebaseAdmin');
 
-// Import các model
-const {devices, logs, alerts, users} = require('../models');
-// Thêm 'alerts' để tạo cảnh báo
-const {handleSmokeSensorData} = require("../controllers/handleSmokeSensorData");
-
+// Import models
+const { devices, logs, alerts, users } = require('../models');
+const { handleSmokeSensorData } = require("../controllers/handleSmokeSensorData");
 
 // Import EmailService
 const { sendEmergencyAlertEmail } = require('../services/EmailService');
@@ -14,8 +12,8 @@ function getToggleDevice() {
 }
 
 const ALERT_TYPES = {
-    GAS_HIGH: 1,       // Giả sử AlertTypeID=1: cảnh báo gas
-    TEMP_HIGH: 2,      // Giả sử AlertTypeID=2: cảnh báo nhiệt độ
+    GAS_HIGH: 1,       // AlertTypeID=1: gas alert
+    TEMP_HIGH: 2,      // AlertTypeID=2: temperature alert
 };
 
 const ALERT_MESSAGES = {
@@ -23,98 +21,109 @@ const ALERT_MESSAGES = {
     TEMP_HIGH: 'KHẨN CẤP! Nhiệt độ quá cao!',
 };
 
-// Biến cục bộ lưu trữ kết nối WebSocket của từng deviceId
-const clients = {};
+// Store socket connections for each deviceId
+const deviceClients = {};
+// Store mobile clients
+const mobileClients = {};
 
-function initWebSocket(server) {
-    const wss = new WebSocket.Server({server});
-    wss.on('connection', (ws, req) => {
-        // Lấy deviceId từ query URL
-        const queryParams = req.url.split('?')[1];  // "deviceId=123"
-        const deviceId = queryParams.split('=')[1];
-        clients[deviceId] = ws;
+function initSocketIO(server) {
+    const io = new Server(server, {
+        cors: {
+            origin: "*",
+            methods: ["GET", "POST"]
+        },
+        pingTimeout: 30000,    // 30 seconds
+        pingInterval: 25000    // 25 seconds
+    });
 
-        console.log(`Thiết bị ${deviceId} đã kết nối qua WebSocket`);
-        // Ping client mỗi 25 giây
-        const interval = setInterval(() => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.ping();
-                console.log('Gửi ping đến client');
-            }
-        }, 25000);
+    // Namespace for devices
+    const deviceNamespace = io.of('/device');
 
-        ws.on('pong', () => {
-            console.log('Nhận pong từ client');
-        });
+    // Namespace for mobile clients
+    const clientNamespace = io.of('/client');
 
-        // Khi thiết bị gửi message lên
-        ws.on('message', async (message) => {
+    // Device connections
+    deviceNamespace.on('connection', (socket) => {
+        const deviceId = socket.handshake.query.deviceId;
+
+        if (!deviceId) {
+            console.log('Connection attempt without deviceId');
+            socket.disconnect();
+            return;
+        }
+
+        console.log(`Thiết bị ${deviceId} đã kết nối qua Socket.IO`);
+
+        // Store the socket connection
+        deviceClients[deviceId] = socket;
+
+        // Emit device_connect event to client namespace
+        clientNamespace.emit('device_connect', { deviceId });
+
+        // Listen for sensor data from device
+        socket.on('sensorData', async (data) => {
             try {
-                // Parse JSON
-                const dataFromDevice = JSON.parse(message);
-                console.log(`Tin nhắn từ thiết bị ${deviceId}:`, dataFromDevice);
+                console.log(`Dữ liệu từ thiết bị ${deviceId}:`, data);
 
-                // Tìm thiết bị trong DB
-                const device = await devices.findOne({where: {DeviceID: deviceId}});
+                // Find device in DB
+                const device = await devices.findOne({ where: { DeviceID: deviceId } });
                 if (!device) {
                     console.log(`Thiết bị ${deviceId} không tồn tại trong DB. Bỏ qua ghi log.`);
                     return;
                 }
 
-                // Kiểm tra "type"
-                if (dataFromDevice.type === 'smokeSensor' || dataFromDevice.type === 'sensorData') {
+                // Process smoke sensor data
+                if (data.type === 'smokeSensor' || data.type === 'sensorData') {
                     if (handleSmokeSensorData) {
-                        await handleSmokeSensorData(deviceId, dataFromDevice);
+                        await handleSmokeSensorData(deviceId, data);
                     } else {
-                        // Ghi log cơ bản
+                        // Basic logging
                         await logs.create({
                             DeviceID: device.DeviceID,
                             UserID: device.UserID || null,
                             SpaceID: device.SpaceID || null,
-                            Action: {fromDevice: true, type: 'smokeSensor'},
-                            Details: dataFromDevice,
+                            Action: { fromDevice: true, type: 'smokeSensor' },
+                            Details: data,
                             Timestamp: new Date()
                         });
                         console.log(`(Sensor) Log cho Thiết bị ${deviceId} đã được ghi vào DB.`);
                     }
 
-                    /**
-                     * ======= BỔ SUNG PHẦN KIỂM TRA KHẨN CẤP & TẠO ALERT =======
-                     * Ví dụ: gas > 300 và/hoặc temperature > 50 => tạo alert
-                     */
-                    const gasValue = dataFromDevice.gas;
-                    const tempValue = dataFromDevice.temperature;
+                    // Check for alerts
+                    const gasValue = data.gas;
+                    const tempValue = data.temperature;
 
-                    // Cờ đánh dấu có tạo alert hay không
                     let alertCreated = false;
 
-                    // 1) Kiểm tra gas
+                    // Gas check
                     if (typeof gasValue === 'number' && gasValue > 500) {
                         const message = `${ALERT_MESSAGES.GAS_HIGH} (gas = ${gasValue})`;
                         await createAlert(device, ALERT_TYPES.GAS_HIGH, message);
                         alertCreated = true;
                     }
 
-                    // 2) Kiểm tra nhiệt độ
+                    // Temperature check
                     if (typeof tempValue === 'number' && tempValue > 40) {
                         const message = `${ALERT_MESSAGES.TEMP_HIGH} (temp = ${tempValue}°C)`;
                         await createAlert(device, ALERT_TYPES.TEMP_HIGH, message);
                         alertCreated = true;
                     }
 
-                    // Nếu muốn, bạn có thể gửi WebSocket lại cho front-end thông báo
                     if (alertCreated) {
                         console.log(`=> Đã tạo Alert cho thiết bị ID=${device.DeviceID}`);
                     }
 
+                    // Send real-time data to mobile clients that are listening
+                    emitRealtimeData(deviceId, data);
+
                 } else {
-                    // Trường hợp khác
+                    // Other case
                     await logs.create({
                         DeviceID: device.DeviceID,
                         UserID: device.UserID || null,
                         SpaceID: device.SpaceID || null,
-                        Action: {fromDevice: true, type: 'other'},
-                        Details: dataFromDevice,
+                        Action: { fromDevice: true, type: 'other' },
+                        Details: data,
                         Timestamp: new Date()
                     });
                     console.log(`(Khác) Log cho Device ${deviceId} đã được ghi vào DB.`);
@@ -124,17 +133,25 @@ function initWebSocket(server) {
             }
         });
 
-        // Khi thiết bị đóng kết nối
-        ws.on('close', async () => {
+        // Listen for online status from device
+        socket.on('device_online', () => {
+            clientNamespace.emit('device_online', { deviceId });
+        });
+
+        // Handle disconnection
+        socket.on('disconnect', async () => {
             console.log(`Thiết bị ${deviceId} ngắt kết nối`);
-            delete clients[deviceId];
+            delete deviceClients[deviceId];
+
+            // Emit disconnection event
+            clientNamespace.emit('device_disconnect', { deviceId });
 
             try {
                 const toggleDevice = getToggleDevice();
                 await toggleDevice({
                     params: { id: deviceId },
                     body: { powerStatus: false },
-                    user: { id: 0 }  // Hệ thống thực hiện với UserID = 0
+                    user: { id: 0 }  // System performs with UserID = 0
                 }, {
                     status: () => ({ json: () => {} })
                 });
@@ -144,31 +161,83 @@ function initWebSocket(server) {
                 console.error(`Lỗi khi tắt thiết bị ${deviceId}:`, error.message);
             }
         });
+    });
 
+    // Mobile client connections
+    clientNamespace.on('connection', (socket) => {
+        console.log('Mobile client connected');
 
+        // Store client for broadcasting
+        const clientId = socket.id;
+        mobileClients[clientId] = { socket, listeningDevices: new Set() };
+
+        // Handle real-time data request
+        socket.on('start_real_time_device', (data) => {
+            const { deviceId } = data;
+            if (deviceId) {
+                console.log(`Client ${clientId} started listening to device ${deviceId}`);
+                mobileClients[clientId].listeningDevices.add(deviceId);
+
+                // If device is already connected, emit online status
+                if (deviceClients[deviceId]) {
+                    socket.emit('device_online', { deviceId });
+                }
+            }
+        });
+
+        // Handle stop listening for real-time data
+        socket.on('stop_real_time_device', (data) => {
+            const { deviceId } = data;
+            if (deviceId && mobileClients[clientId]) {
+                console.log(`Client ${clientId} stopped listening to device ${deviceId}`);
+                mobileClients[clientId].listeningDevices.delete(deviceId);
+            }
+        });
+
+        // Handle client disconnect
+        socket.on('disconnect', () => {
+            console.log(`Mobile client ${clientId} disconnected`);
+            delete mobileClients[clientId];
+        });
     });
 }
 
 /**
- * Hàm gửi lệnh tới thiết bị qua WebSocket.
- * @param {string | number} deviceId - Mã thiết bị (chuỗi hoặc số)
- * @param {object} command - lệnh cần thực hiện
- * @param {string | number} initiatorUserId - Mã người dùng thực hiện lệnh
- *
+ * Function to emit real-time data to subscribed clients
+ */
+function emitRealtimeData(deviceId, data) {
+    // Format data for clients
+    const realtimeData = {
+        serial: deviceId,
+        data: {
+            val: data
+        }
+    };
+
+    // Send to all clients who are listening to this device
+    Object.values(mobileClients).forEach(client => {
+        if (client.listeningDevices.has(deviceId)) {
+            client.socket.emit('realtime_device_value', realtimeData);
+        }
+    });
+}
+
+/**
+ * Function to send commands to devices via Socket.IO
  */
 async function sendToDevice(deviceId, command, initiatorUserId = null) {
-    if (clients[deviceId]) {
-        clients[deviceId].send(JSON.stringify(command));
+    if (deviceClients[deviceId]) {
+        deviceClients[deviceId].emit('command', command);
         console.log(`Command sent to Device ${deviceId}:`, command);
 
         try {
-            const device = await devices.findOne({where: {DeviceID: deviceId}});
+            const device = await devices.findOne({ where: { DeviceID: deviceId } });
             if (device) {
                 await logs.create({
                     DeviceID: device.DeviceID,
                     UserID: initiatorUserId || device.UserID || null,
                     SpaceID: device.SpaceID || null,
-                    Action: {fromServer: true, command},
+                    Action: { fromServer: true, command },
                     Timestamp: new Date()
                 });
                 console.log(`Yêu cầu log từ Server tới thiết bị ${deviceId} đã được ghi.`);
@@ -177,20 +246,16 @@ async function sendToDevice(deviceId, command, initiatorUserId = null) {
             console.error(`Lỗi ghi log khi gửi lệnh tới Device ${deviceId}:`, error.message);
         }
     } else {
-        console.log(`Thiết bị ${deviceId} hiện không kết nối WebSocket.`);
+        console.log(`Thiết bị ${deviceId} hiện không kết nối Socket.IO.`);
     }
 }
 
-
 /**
- * Hàm tạo cảnh báo và gửi thông báo FCM cũng như email cảnh báo khẩn cấp
- * @param {object} device - Đối tượng thiết bị
- * @param {number} alertType - Loại cảnh báo (ID)
- * @param {string} messageContent - Nội dung thông điệp cảnh báo
+ * Function to create alerts and send FCM notifications and emergency emails
  */
 async function createAlert(device, alertType, messageContent) {
     try {
-        // Tạo cảnh báo trong cơ sở dữ liệu
+        // Create alert in database
         const alert = await alerts.create({
             DeviceID: device.DeviceID,
             SpaceID: device.SpaceID || null,
@@ -201,12 +266,11 @@ async function createAlert(device, alertType, messageContent) {
         });
         console.log(`*** ALERT: ${messageContent} ở thiết bị ${device.DeviceID}`);
 
-        // Lấy người dùng liên quan đến thiết bị
+        // Get user related to device
         const user = await users.findOne({ where: { UserID: device.UserID } });
         if (user) {
-            // Gửi thông báo FCM nếu người dùng có DeviceToken
+            // Send FCM notification if user has DeviceToken
             if (user.DeviceToken) {
-                // Cấu trúc payload thông báo
                 const message = {
                     token: user.DeviceToken,
                     notification: {
@@ -219,14 +283,14 @@ async function createAlert(device, alertType, messageContent) {
                     },
                 };
 
-                // Gửi thông báo FCM
+                // Send FCM notification
                 const response = await admin.messaging().send(message);
                 console.log(`Đã gửi thông báo FCM đến UserID=${user.UserID}:`, response);
             } else {
                 console.log(`UserID=${user.UserID} không có DeviceToken.`);
             }
 
-            // Gửi email cảnh báo khẩn cấp nếu người dùng có Email
+            // Send emergency alert email if user has Email
             if (user.Email) {
                 await sendEmergencyAlertEmail(user.Email, messageContent);
             } else {
@@ -244,6 +308,6 @@ async function createAlert(device, alertType, messageContent) {
 }
 
 module.exports = {
-    initWebSocket,
+    initSocketIO,
     sendToDevice
 };

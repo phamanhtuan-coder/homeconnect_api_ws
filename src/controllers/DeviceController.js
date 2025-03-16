@@ -1,8 +1,8 @@
-const { devices, devicetypes, spaces, houses, sharedpermissions  } = require('../models');
-const wsServer = require('../ws/wsServer');
-// const { sequelize } = require('sequelize'); // Thêm Sequelize vào đây
+const { devices, devicetypes, spaces, houses, sharedpermissions } = require('../models');
+const socketServer = require('../ws/socketServer');  // Updated import
+
 /**
- * Tạo thiết bị mới (Create Device)
+ * Create new device
  */
 exports.createDevice = async (req, res) => {
     try {
@@ -32,7 +32,7 @@ exports.createDevice = async (req, res) => {
 };
 
 /**
- * Liên kết thiết bị đã tồn tại (Link Device)
+ * Link existing device
  */
 exports.linkDevice = async (req, res) => {
     try {
@@ -58,7 +58,7 @@ exports.linkDevice = async (req, res) => {
 };
 
 /**
- * Bật/Tắt thiết bị qua WebSocket (Toggle Device Power)
+ * Toggle device power via Socket.IO
  */
 exports.toggleDevice = async (req, res) => {
     try {
@@ -66,21 +66,20 @@ exports.toggleDevice = async (req, res) => {
         const { powerStatus } = req.body;
         const userId = req.user.id;
 
-        // Tìm thiết bị theo DeviceID và userId
-        // (Chưa kết luận là userId có quyền hay không, vì có thể userId không phải chủ)
+        // Find device by DeviceID
         const device = await devices.findOne({ where: { DeviceID: id } });
 
         if (!device) {
             return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
-        // 1. Kiểm tra nếu user là chủ của thiết bị
+        // 1. Check if user is the device owner
         let hasPermission = device.UserID === userId;
-        // Nếu là hệ thống (userId === 0), bỏ qua kiểm tra quyền
+        // If system (userId === 0), skip permission check
         if(userId === 0)
-        hasPermission = true
+            hasPermission = true;
 
-        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
+        // 2. If not owner, check sharedpermissions
         if (!hasPermission) {
             const permissionRecord = await sharedpermissions.findOne({
                 where: {
@@ -88,24 +87,24 @@ exports.toggleDevice = async (req, res) => {
                     SharedWithUserID: userId
                 }
             });
-            // Nếu tìm thấy -> user có quyền do được chia sẻ
+            // If found -> user has permission due to sharing
             if (permissionRecord) {
                 hasPermission = true;
             }
         }
 
-        // Nếu user không có quyền => báo lỗi
+        // If user has no permission => error
         if (!hasPermission) {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // ----- OK, người dùng có quyền. Cập nhật trạng thái nguồn ----- //
+        // ----- OK, user has permission. Update power status ----- //
 
-        // Cập nhật PowerStatus trong DB
+        // Update PowerStatus in DB
         await device.update({ PowerStatus: powerStatus });
 
-        // Gửi lệnh qua WebSocket
-        await wsServer.sendToDevice(id, { action: 'toggle', powerStatus }, userId);
+        // Send command via Socket.IO
+        await socketServer.sendToDevice(id, { action: 'toggle', powerStatus }, userId);
 
         return res.status(200).json({
             message: `Thiết bị đã được ${powerStatus ? 'bật' : 'tắt'}`,
@@ -117,7 +116,7 @@ exports.toggleDevice = async (req, res) => {
 };
 
 /**
- * Điều chỉnh độ sáng và màu sắc (Update Brightness and Color)
+ * Update brightness and color attributes
  */
 exports.updateDeviceAttributes = async (req, res) => {
     try {
@@ -125,7 +124,7 @@ exports.updateDeviceAttributes = async (req, res) => {
         const { brightness, color } = req.body;
         const userId = req.user.id;
 
-        // Tìm thiết bị (kèm DeviceType để biết nó hỗ trợ attribute nào)
+        // Find device (with DeviceType to know supported attributes)
         const device = await devices.findOne({
             where: { DeviceID: id },
             include: {
@@ -138,10 +137,10 @@ exports.updateDeviceAttributes = async (req, res) => {
             return res.status(404).json({ error: 'Không tìm thấy thiết bị.' });
         }
 
-        // 1. Kiểm tra nếu user là chủ thiết bị
+        // 1. Check if user is device owner
         let hasPermission = device.UserID === userId;
 
-        // 2. Nếu không phải chủ, kiểm tra sharedpermissions
+        // 2. If not owner, check sharedpermissions
         if (!hasPermission) {
             const permissionRecord = await sharedpermissions.findOne({
                 where: {
@@ -154,19 +153,19 @@ exports.updateDeviceAttributes = async (req, res) => {
             }
         }
 
-        // Nếu user không có quyền => báo lỗi
+        // If user has no permission => error
         if (!hasPermission) {
             return res.status(403).json({ error: 'Không có quyền điều khiển thiết bị này.' });
         }
 
-        // ------ OK, người dùng có quyền. Bắt đầu xử lý update attribute ------ //
+        // ------ OK, user has permission. Process attribute update ------ //
 
-        // Kiểm tra kiểu thiết bị hỗ trợ attribute nào
+        // Check which attributes are supported by the device type
         const supportedAttributes = device.DeviceType.Attributes;
-        // => ví dụ: { brightness: true, color: true, ... }
+        // e.g., { brightness: true, color: true, ... }
 
-        // device.Attribute là JSON/Obj => ta đọc, cập nhật, rồi lưu
-        const currentAttributes = device.Attribute; // Giả sử device.Attribute kiểu object
+        // device.Attribute is JSON/Obj => read, update, then save
+        const currentAttributes = device.Attribute;
 
         if (supportedAttributes.brightness && typeof brightness !== 'undefined') {
             currentAttributes.brightness = brightness;
@@ -175,11 +174,11 @@ exports.updateDeviceAttributes = async (req, res) => {
             currentAttributes.color = color;
         }
 
-        // Cập nhật thiết bị trong DB
+        // Update device in DB
         await device.update({ Attribute: currentAttributes });
 
-        // Gửi lệnh qua WebSocket
-        await wsServer.sendToDevice(device.DeviceID, {
+        // Send command via Socket.IO
+        await socketServer.sendToDevice(device.DeviceID, {
             action: 'updateAttributes',
             brightness,
             color
@@ -194,11 +193,8 @@ exports.updateDeviceAttributes = async (req, res) => {
     }
 };
 
-
-
-
 /**
- * Lấy tất cả thiết bị của người dùng hiện tại
+ * Get all devices by current user
  */
 exports.getAllDevicesByUser = async (req, res) => {
     try {
@@ -220,7 +216,7 @@ exports.getAllDevicesByUser = async (req, res) => {
 };
 
 /**
- * Lấy thông tin thiết bị theo ID
+ * Get device info by ID
  */
 exports.getDeviceById = async (req, res) => {
     try {
@@ -245,10 +241,8 @@ exports.getDeviceById = async (req, res) => {
     }
 };
 
-
 /**
- * Gỡ liên kết thiết bị (Unlink Device from User)
- * Xóa UserID của thiết bị nhưng không xóa thiết bị
+ * Unlink device (Remove UserID but don't delete device)
  */
 exports.unlinkDevice = async (req, res) => {
     try {
@@ -263,7 +257,7 @@ exports.unlinkDevice = async (req, res) => {
             return res.status(404).json({ error: 'Thiết bị không được tìm thấy hoặc không có quyền truy cập' });
         }
 
-        // Cập nhật UserID về null (gỡ liên kết)
+        // Update UserID to null (unlink)
         await device.update({ UserID: null, SpaceID: null });
         res.status(200).json({ message: 'Gỡ liên kết thiết bị thành công' });
     } catch (error) {
@@ -272,7 +266,7 @@ exports.unlinkDevice = async (req, res) => {
 };
 
 /**
- * Cập nhật phòng của thiết bị (Update Device Space)
+ * Update device space
  */
 exports.updateDeviceSpace = async (req, res) => {
     try {
@@ -296,8 +290,7 @@ exports.updateDeviceSpace = async (req, res) => {
 };
 
 /**
- * Xóa thiết bị khỏi phòng (Remove Device from Space)
- * Giữ liên kết với User nhưng SpaceID trở về null
+ * Remove device from space (Keep user link but set SpaceID to null)
  */
 exports.removeDeviceFromSpace = async (req, res) => {
     try {
@@ -312,7 +305,7 @@ exports.removeDeviceFromSpace = async (req, res) => {
             return res.status(404).json({ error: 'Device not found or access denied' });
         }
 
-        // Đặt SpaceID thành null để xóa khỏi phòng
+        // Set SpaceID to null to remove from space
         await device.update({ SpaceID: null });
         res.status(200).json({ message: 'Device removed from space', device });
     } catch (error) {
@@ -321,7 +314,7 @@ exports.removeDeviceFromSpace = async (req, res) => {
 };
 
 /**
- * Cập nhật thông tin Wifi của thiết bị (Update Wifi Settings)
+ * Update device WiFi settings
  */
 exports.updateDeviceWifi = async (req, res) => {
     try {
@@ -339,8 +332,8 @@ exports.updateDeviceWifi = async (req, res) => {
 
         await device.update({ WifiSSID, WifiPassword });
 
-        // Gửi cập nhật qua WebSocket nếu thiết bị đang trực tuyến
-        await wsServer.sendToDevice(device.DeviceID, {
+        // Send update via Socket.IO if device is online
+        await socketServer.sendToDevice(device.DeviceID, {
             action: 'updateWifi',
             WifiSSID,
             WifiPassword
